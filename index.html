@@ -1,721 +1,434 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>GeoGuessr Clue Trainer</title>
-  <style>
-    :root {
-      --bg: #101820;
-      --panel: #18242f;
-      --panel2: #223240;
-      --text: #f2f6fa;
-      --muted: #aab8c5;
-      --accent: #7bd88f;
-      --bad: #ff7676;
-      --warn: #ffd166;
-      --button: #2d4354;
-      --button-hover: #3d5b70;
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      background: radial-gradient(circle at top, #1d3445 0%, var(--bg) 45%, #080d12 100%);
-      color: var(--text);
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
-    }
-    .app {
-      width: min(980px, 100%);
-      background: rgba(24, 36, 47, 0.95);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 22px;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.45);
-      overflow: hidden;
-    }
-    header {
-      padding: 22px 26px;
-      background: linear-gradient(135deg, #203447, #14212c);
-      border-bottom: 1px solid rgba(255,255,255,0.08);
-      display: flex;
-      justify-content: space-between;
-      gap: 16px;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-    h1 { margin: 0; font-size: clamp(1.4rem, 3vw, 2rem); }
-    .subtitle { color: var(--muted); margin-top: 4px; font-size: 0.95rem; }
-    .stats {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-    .pill {
-      background: rgba(255,255,255,0.08);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 999px;
-      padding: 8px 12px;
-      font-size: 0.9rem;
-      color: var(--text);
-    }
-    main { padding: 26px; }
-    .screen { display: none; }
-    .screen.active { display: block; }
-    .menu-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 14px;
-      margin-top: 20px;
-    }
-    button, .button {
-      border: 0;
-      background: var(--button);
-      color: var(--text);
-      border-radius: 14px;
-      padding: 14px 16px;
-      cursor: pointer;
-      font-size: 1rem;
-      transition: transform 0.08s ease, background 0.15s ease, border-color 0.15s ease;
-      text-align: left;
-      border: 1px solid rgba(255,255,255,0.08);
-    }
-    button:hover { background: var(--button-hover); transform: translateY(-1px); }
-    button:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
-    .primary { background: #247a45; }
-    .primary:hover { background: #2f9255; }
-    .danger { background: #713341; }
-    .danger:hover { background: #8b4051; }
-    .question-card {
-      background: var(--panel2);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 20px;
-      padding: 22px;
-    }
-    .category {
-      color: var(--accent);
-      font-size: 0.9rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      margin-bottom: 10px;
-    }
-    .question {
-      font-size: clamp(1.2rem, 3vw, 1.7rem);
-      line-height: 1.35;
-      margin: 0 0 18px;
-    }
-    .answers {
-      display: grid;
-      gap: 12px;
-      margin-top: 18px;
-    }
-    .answer {
-      width: 100%;
-      text-align: left;
-      line-height: 1.35;
-    }
-    .answer.correct { background: #1f7a45; border-color: #8ff0a4; }
-    .answer.wrong { background: #8a303a; border-color: #ff9da3; }
-    .feedback {
-      margin-top: 18px;
-      padding: 16px;
-      border-radius: 14px;
-      background: rgba(255,255,255,0.08);
-      color: var(--text);
-      line-height: 1.5;
-      display: none;
-    }
-    .feedback.show { display: block; }
-    .timer-wrap {
-      height: 12px;
-      background: rgba(255,255,255,0.1);
-      border-radius: 999px;
-      overflow: hidden;
-      margin: 18px 0 4px;
-    }
-    .timer-bar {
-      height: 100%;
-      width: 100%;
-      background: var(--warn);
-      transition: width 1s linear;
-    }
-    .row {
-      display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      margin-top: 18px;
-    }
-    .small { color: var(--muted); font-size: 0.9rem; line-height: 1.5; }
-    .review-list {
-      display: grid;
-      gap: 12px;
-      margin-top: 16px;
-    }
-    .review-item {
-      background: rgba(255,255,255,0.07);
-      border-radius: 14px;
-      padding: 14px;
-      border: 1px solid rgba(255,255,255,0.08);
-    }
-    .kbd {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      background: rgba(255,255,255,0.1);
-      border: 1px solid rgba(255,255,255,0.12);
-      padding: 2px 6px;
-      border-radius: 6px;
-    }
-    .two-col {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 14px;
-    }
-    .mini-card {
-      background: rgba(255,255,255,0.07);
-      padding: 16px;
-      border-radius: 16px;
-      border: 1px solid rgba(255,255,255,0.08);
-    }
-    .mini-card h3 { margin: 0 0 8px; }
-    .mini-card p { margin: 0; color: var(--muted); line-height: 1.5; }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>GeoGuessr Specific Clue Trainer</title>
+<style>
+:root{--bg:#0d151c;--panel:#182431;--panel2:#223242;--text:#f4f8fb;--muted:#aebdcc;--accent:#78e08f;--warn:#ffd166;--btn:#2d4354;--btn2:#3e5b71}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:radial-gradient(circle at top,#1e394f 0%,var(--bg) 48%,#060a0f 100%);color:var(--text);min-height:100vh;padding:22px;display:flex;justify-content:center;align-items:center}
+.app{width:min(1120px,100%);background:rgba(24,36,49,.96);border:1px solid rgba(255,255,255,.08);border-radius:24px;box-shadow:0 24px 70px rgba(0,0,0,.45);overflow:hidden}
+header{padding:22px 26px;background:linear-gradient(135deg,#20384d,#111d28);border-bottom:1px solid rgba(255,255,255,.08);display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:center}
+h1{margin:0;font-size:clamp(1.45rem,3vw,2.1rem)}h2{margin-top:0}.subtitle{color:var(--muted);margin-top:5px;line-height:1.45}.stats{display:flex;gap:9px;flex-wrap:wrap}.pill{padding:8px 12px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.08);font-size:.92rem}
+main{padding:26px}.screen{display:none}.screen.active{display:block}.small{color:var(--muted);font-size:.92rem;line-height:1.5}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:14px;margin-top:16px}.diff-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:16px 0 20px}
+button{border:1px solid rgba(255,255,255,.09);background:var(--btn);color:var(--text);padding:14px 16px;border-radius:15px;text-align:left;cursor:pointer;font-size:1rem;transition:transform .08s ease,background .15s ease,border-color .15s ease}
+button:hover{transform:translateY(-1px);background:var(--btn2)}button:disabled{opacity:.6;cursor:not-allowed;transform:none}.diff.active{outline:3px solid var(--accent);background:#1f5138}.primary{background:#217a44}.primary:hover{background:#2d9655}.danger{background:#743243}.danger:hover{background:#8b3c4f}.secondary{background:#28445c}
+.card{background:var(--panel2);border:1px solid rgba(255,255,255,.08);border-radius:22px;padding:23px}.category{color:var(--accent);font-weight:800;text-transform:uppercase;letter-spacing:.08em;font-size:.88rem;margin-bottom:10px}.question{font-size:clamp(1.18rem,2.7vw,1.65rem);line-height:1.36;margin:0}
+.answers{display:grid;gap:11px;margin-top:20px}.answer.correct{background:#1f7a45;border-color:#9df2b0}.answer.wrong{background:#8a303a;border-color:#ffa1a7}
+.feedback{margin-top:18px;padding:16px;border-radius:14px;background:rgba(255,255,255,.08);line-height:1.5;display:none}.feedback.show{display:block}.timer-wrap{height:13px;background:rgba(255,255,255,.1);border-radius:999px;margin:18px 0 4px;overflow:hidden}.timer-bar{height:100%;width:100%;background:var(--warn);transition:width 1s linear}.row{display:flex;gap:12px;flex-wrap:wrap;justify-content:space-between;align-items:center;margin-top:18px}.kbd{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:rgba(255,255,255,.1);padding:2px 7px;border-radius:7px;border:1px solid rgba(255,255,255,.13)}.review-list{display:grid;gap:12px;margin-top:14px}.review-item{background:rgba(255,255,255,.07);border-radius:14px;padding:14px;border:1px solid rgba(255,255,255,.08);line-height:1.5}.study-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}.study-card{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:16px}.study-card h3{margin:0 0 8px}.study-card p{color:var(--muted);margin:0;line-height:1.5}.badge{display:inline-block;border-radius:999px;padding:2px 8px;background:rgba(112,161,255,.18);color:#cfe0ff;font-size:.78rem;margin-left:5px}
+
+.mode-panel{background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:16px;margin-top:16px}
+.mode-panel h3{margin:0 0 8px}
+.mode-checks{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin-top:12px}
+.mode-check{display:flex;gap:10px;align-items:flex-start;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:12px;cursor:pointer}
+.mode-check input{margin-top:4px;transform:scale(1.2)}
+.mode-check strong{display:block}
+.mode-check span{display:block;color:var(--muted);font-size:.88rem;line-height:1.35;margin-top:2px}
+.action-row{display:flex;gap:12px;flex-wrap:wrap;margin-top:16px;align-items:center}
+.select-mini{background:#28445c;padding:10px 12px;font-size:.92rem}
+
+
+.visual-scene{margin:14px 0 18px;border-radius:18px;overflow:hidden;border:1px solid rgba(255,255,255,.12);background:#152331;box-shadow:inset 0 0 0 1px rgba(255,255,255,.03)}
+.visual-scene svg{display:block;width:100%;height:auto;min-height:240px}
+.visual-caption{background:rgba(0,0,0,.22);color:var(--muted);padding:9px 13px;font-size:.9rem;line-height:1.35}
+.scene-note{font-size:.78rem;fill:rgba(255,255,255,.78);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+.sign-text{font-weight:800;font-size:20px;fill:#111;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+
+
+.real-photo{display:none;width:100%;max-height:315px;object-fit:cover;background:#111}
+.real-photo-credit{display:none;background:rgba(0,0,0,.42);color:#c9d4df;font-size:.78rem;line-height:1.35;padding:7px 12px}.image-status{background:rgba(0,0,0,.35);color:#dbe6f0;font-size:.78rem;line-height:1.35;padding:7px 12px;border-bottom:1px solid rgba(255,255,255,.08)}.visual-scene.real-loaded .image-status{display:none}
+.visual-scene.real-loaded svg,.visual-scene.real-loaded .visual-caption{display:none}
+.visual-scene.real-loaded .real-photo,.visual-scene.real-loaded .real-photo-credit{display:block}
+
+</style>
 </head>
 <body>
-  <div class="app">
-    <header>
-      <div>
-        <h1>GeoGuessr Clue Trainer</h1>
-        <div class="subtitle">Study game for country clues, vegetation, roads, scripts, plates, poles, and lookalikes.</div>
-      </div>
-      <div class="stats">
-        <div class="pill">Score: <span id="score">0</span></div>
-        <div class="pill">Streak: <span id="streak">0</span></div>
-        <div class="pill">Round: <span id="round">0</span>/<span id="total">0</span></div>
-      </div>
-    </header>
+<div class="app">
+<header><div><h1>GeoGuessr Specific Clue Trainer</h1><div class="subtitle">Specific signs, roads, plates, poles, bollards, landscapes, scripts, lookalikes, and coverage traps.</div></div>
+<div class="stats"><div class="pill">Score: <span id="score">0</span></div><div class="pill">Streak: <span id="streak">0</span></div><div class="pill">Round: <span id="round">0</span>/<span id="total">0</span></div><div class="pill">Difficulty: <span id="difficultyLabel">Easy</span></div></div></header>
+<main>
+<section id="menu" class="screen active">
+<h2>Choose difficulty, then select one or more modes</h2>
+<p class="small">Pick any combination, like <strong>Specific Signs + Plates + Lookalikes</strong>, then press Start Selected Training. Difficulty controls how hard the questions are.</p>
+<div class="diff-grid">
+<button id="easyBtn" class="diff active" onclick="setDifficulty('easy')"><strong>Easy</strong><br><span class="small">Specific beginner clues, 3 answers, 12 rounds.</span></button>
+<button id="mediumBtn" class="diff" onclick="setDifficulty('medium')"><strong>Medium / Median</strong><br><span class="small">Harder than easy, 4 answers, 15 rounds.</span></button>
+<button id="hardBtn" class="diff" onclick="setDifficulty('hard')"><strong>Hard</strong><br><span class="small">Experienced/amateur level, 4 answers, 18 rounds.</span></button>
+<button id="masterBtn" class="diff" onclick="setDifficulty('master')"><strong>Master</strong><br><span class="small">Top-tier style facts, 4 answers, 20 rounds.</span></button>
+</div>
 
-    <main>
-      <section id="menu" class="screen active">
-        <h2>Choose a mode</h2>
-        <p class="small">This is for learning before matches. It asks clue-based questions and explains the answer after each round.</p>
-        <div class="menu-grid">
-          <button onclick="startGame('mixed')">
-            <strong>Mixed Training</strong><br>
-            <span class="small">Random questions from every category.</span>
-          </button>
-          <button onclick="startGame('speed')">
-            <strong>10-Second Scan</strong><br>
-            <span class="small">Timed rounds. Choose quickly based on one clue.</span>
-          </button>
-          <button onclick="startGame('lookalikes')">
-            <strong>Lookalike Duel</strong><br>
-            <span class="small">Australia vs South Africa, Japan vs Korea vs Taiwan, and more.</span>
-          </button>
-          <button onclick="startGame('scripts')">
-            <strong>Scripts & Language</strong><br>
-            <span class="small">Learn alphabets and key language separators.</span>
-          </button>
-          <button onclick="startGame('roads')">
-            <strong>Roads, Plates & Poles</strong><br>
-            <span class="small">Road lines, driving side, plates, bollards, infrastructure.</span>
-          </button>
-          <button onclick="showStudyCards()">
-            <strong>Study Cards</strong><br>
-            <span class="small">Quick notes before playing.</span>
-          </button>
-        </div>
-      </section>
-
-      <section id="game" class="screen">
-        <div class="question-card">
-          <div class="category" id="category"></div>
-          <p class="question" id="question"></p>
-          <div id="timerWrap" class="timer-wrap" style="display:none">
-            <div id="timerBar" class="timer-bar"></div>
-          </div>
-          <div class="answers" id="answers"></div>
-          <div class="feedback" id="feedback"></div>
-          <div class="row">
-            <button id="nextBtn" class="primary" onclick="nextQuestion()" disabled>Next round</button>
-            <button onclick="endGame()" class="danger">End game</button>
-          </div>
-        </div>
-        <p class="small">Keyboard shortcut: press <span class="kbd">1</span>, <span class="kbd">2</span>, <span class="kbd">3</span>, or <span class="kbd">4</span> to answer.</p>
-      </section>
-
-      <section id="end" class="screen">
-        <h2>Game complete</h2>
-        <p id="finalScore"></p>
-        <div class="row">
-          <button class="primary" onclick="startGame(currentMode)">Play again</button>
-          <button onclick="goMenu()">Back to menu</button>
-        </div>
-        <h3>Review your misses</h3>
-        <div id="review" class="review-list"></div>
-      </section>
-
-      <section id="study" class="screen">
-        <h2>Study Cards</h2>
-        <div class="two-col">
-          <div class="mini-card">
-            <h3>Fast scan order</h3>
-            <p>Driving side → road lines → language → plates → poles/bollards → landscape → signs → car/meta.</p>
-          </div>
-          <div class="mini-card">
-            <h3>Most useful separators</h3>
-            <p>Australia/South Africa, Canada/USA, Brazil/Portugal, Spain/Portugal, Japan/Korea/Taiwan, Thailand/Cambodia/Laos.</p>
-          </div>
-          <div class="mini-card">
-            <h3>Left-driving core</h3>
-            <p>UK, Ireland, Japan, Thailand, Malaysia, Indonesia, Singapore, India, Sri Lanka, Bangladesh, Australia, New Zealand, South Africa, Botswana, Kenya, Uganda.</p>
-          </div>
-          <div class="mini-card">
-            <h3>Script instant clues</h3>
-            <p>Hangul = Korea. Kana = Japan. Greek = Greece. Hebrew = Israel. Thai = Thailand. Khmer = Cambodia. Lao = Laos.</p>
-          </div>
-          <div class="mini-card">
-            <h3>Landscape instant clues</h3>
-            <p>Treeless volcanic moss = Iceland/Faroe. Atacama desert = northern Chile. Eucalyptus/red dirt = Australia. Green mountains/sheep = New Zealand.</p>
-          </div>
-          <div class="mini-card">
-            <h3>Use meta carefully</h3>
-            <p>Google car, camera generation, roof racks, and blur are useful, but can change. Use them as confirmation, not your only clue.</p>
-          </div>
-        </div>
-        <div class="row">
-          <button onclick="goMenu()">Back to menu</button>
-        </div>
-      </section>
-    </main>
-  </div>
-
+<div class="mode-panel">
+<h3>Select training modes</h3>
+<p class="small">Choose as many as you want. “Mixed Training” ignores other boxes and includes everything allowed by your difficulty.</p>
+<div class="mode-checks">
+<label class="mode-check"><input type="checkbox" class="modeBox" value="mixed" onchange="handleModeChange(this)"><span><strong>Mixed Training</strong>All clue categories.</span></label>
+<label class="mode-check"><input type="checkbox" class="modeBox" value="signs" onchange="handleModeChange(this)"><span><strong>Specific Signs</strong>No-stopping signs, stop words, direction signs.</span></label>
+<label class="mode-check"><input type="checkbox" class="modeBox" value="roads" onchange="handleModeChange(this)"><span><strong>Roads & Lines</strong>Driving side, centre lines, shoulders.</span></label>
+<label class="mode-check"><input type="checkbox" class="modeBox" value="plates" onchange="handleModeChange(this)"><span><strong>License Plates</strong>Yellow plates, EU strips, plate traps.</span></label>
+<label class="mode-check"><input type="checkbox" class="modeBox" value="language" onchange="handleModeChange(this)"><span><strong>Scripts & Language</strong>Kana, Hangul, Greek, Hebrew, Turkish, Polish, Finnish.</span></label>
+<label class="mode-check"><input type="checkbox" class="modeBox" value="poles" onchange="handleModeChange(this)"><span><strong>Poles & Street Items</strong>Wires, snow poles, concrete/wood poles.</span></label>
+<label class="mode-check"><input type="checkbox" class="modeBox" value="bollards" onchange="handleModeChange(this)"><span><strong>Bollards</strong>Roadside posts and road furniture.</span></label>
+<label class="mode-check"><input type="checkbox" class="modeBox" value="landscape" onchange="handleModeChange(this)"><span><strong>Vegetation & Landscape</strong>Biomes, red dirt, deserts, Andes, fjords.</span></label>
+<label class="mode-check"><input type="checkbox" class="modeBox" value="lookalikes" onchange="handleModeChange(this)"><span><strong>Lookalike Duel</strong>Countries that trick players.</span></label>
+<label class="mode-check"><input type="checkbox" class="modeBox" value="master" onchange="handleModeChange(this)"><span><strong>Master Drill</strong>Only master-level questions.</span></label>
+</div>
+<div class="action-row">
+<button class="primary" onclick="startSelectedGame()">Start Selected Training</button>
+<button class="select-mini" onclick="selectAllModes()">Select all</button>
+<button class="select-mini" onclick="clearModes()">Clear</button>
+<button class="select-mini" onclick="showStudy()">Study Cards</button>
+<span class="small" id="selectedSummary">No modes selected yet.</span>
+</div>
+</div>
+</section>
+<section id="game" class="screen"><div class="card"><div class="category" id="category"></div><div id="visualScene" class="visual-scene"></div><p class="question" id="question"></p><div id="timerWrap" class="timer-wrap" style="display:none"><div id="timerBar" class="timer-bar"></div></div><div id="answers" class="answers"></div><div id="feedback" class="feedback"></div><div class="row"><button id="nextBtn" class="primary" onclick="nextQuestion()" disabled>Next round</button><button class="secondary" onclick="startGame(selectedModes.length?selectedModes:currentMode)">Restart this set</button><button class="danger" onclick="endGame()">End game</button></div></div><p class="small">Keyboard shortcut: press <span class="kbd">1</span>, <span class="kbd">2</span>, <span class="kbd">3</span>, or <span class="kbd">4</span>.</p></section>
+<section id="end" class="screen"><h2>Game complete</h2><p id="finalScore"></p><div class="row"><button class="primary" onclick="startGame(selectedModes.length?selectedModes:currentMode)">Play again</button><button onclick="goMenu()">Back to menu</button></div><h3>Review your misses</h3><div id="review" class="review-list"></div></section>
+<section id="study" class="screen"><h2>Study Cards</h2><div class="study-grid">
+<div class="study-card"><h3>Red/blue circular sign</h3><p>No parking/no stopping. Broad Europe-style clue, not a country lock. Check language, plates, bollards, and road numbers.</p></div>
+<div class="study-card"><h3>Stop words</h3><p>DUR = Turkey. ALTO = Mexico/Latin America. PARE = Brazil/Latin America. STOP alone is weak.</p></div>
+<div class="study-card"><h3>Yellow outer shoulder</h3><p>Left-driving plus yellow outer shoulder line strongly points to South Africa region.</p></div>
+<div class="study-card"><h3>Scripts</h3><p>Hangul = Korea. Kana = Japan. Greek = Greece. Hebrew = Israel. Thai = Thailand. Khmer = Cambodia. Lao = Laos.</p></div>
+<div class="study-card"><h3>Plates</h3><p>Blue strip = Europe-style. Yellow rear + left driving = UK likely. Yellow both plates could be Netherlands, Luxembourg, Colombia, Israel, etc.</p></div>
+<div class="study-card"><h3>Language separators</h3><p>Rua/Estrada/ção/nh/lh = Portuguese. Calle/Carretera/ñ = Spanish. Katu/tie/järvi = Finland. Kabupaten/Kecamatan = Indonesia.</p></div>
+<div class="study-card"><h3>Landscape traps</h3><p>Red dirt, palm trees, mountains, and vineyards are broad clues. They need signs/language/roads to become useful.</p></div>
+<div class="study-card"><h3>Master rule</h3><p>Never lock from one clue unless it is extremely strong. Stack clues: sign + language + road + plate + landscape.</p></div><div class="study-card"><h3>Real image status</h3><p>Every question now searches Wikimedia Commons for a reusable real image using the clue type. If no image loads, the game clearly labels and shows the illustrated fallback.</p></div>
+</div><div class="row"><button onclick="goMenu()">Back to menu</button></div></section>
+</main></div>
 <script>
-const bank = [
-  {
-    mode: ["mixed","roads","speed"],
-    category: "Road Lines",
-    q: "You see left-side driving, dry grassland, security walls, and a yellow outer shoulder line. What is the best first guess?",
-    a: ["South Africa region", "Finland", "Japan", "Portugal"],
-    correct: 0,
-    why: "Left-side driving plus yellow outer shoulder lines strongly points to South Africa or nearby countries like Botswana, Lesotho, or Eswatini."
-  },
-  {
-    mode: ["mixed","scripts","speed"],
-    category: "Script",
-    q: "A sign is written in Hangul: 한글. Which country is most likely?",
-    a: ["Japan", "South Korea", "Thailand", "Greece"],
-    correct: 1,
-    why: "Hangul is the Korean writing system. In GeoGuessr, Korean script is a very strong South Korea clue."
-  },
-  {
-    mode: ["mixed","scripts"],
-    category: "Script",
-    q: "You see Japanese kanji mixed with curvy kana like の, し, and ん. What country is most likely?",
-    a: ["China", "Taiwan", "Japan", "South Korea"],
-    correct: 2,
-    why: "Japanese commonly mixes kanji with hiragana/katakana. Chinese signs usually use characters without kana."
-  },
-  {
-    mode: ["mixed","scripts","lookalikes"],
-    category: "Lookalikes",
-    q: "How do you quickly separate Japan, South Korea, and Taiwan?",
-    a: ["All drive on the left", "Script and driving side", "Only vegetation", "Only road colour"],
-    correct: 1,
-    why: "Japan drives on the left and uses kana/kanji. Korea uses Hangul and drives right. Taiwan uses Chinese characters, scooters, and drives right."
-  },
-  {
-    mode: ["mixed","vegetation","speed"],
-    category: "Landscape",
-    q: "Treeless volcanic terrain, black lava rock, moss, and sparse roads point most strongly to:",
-    a: ["Iceland", "Brazil", "Bangladesh", "Hungary"],
-    correct: 0,
-    why: "Iceland is famous in GeoGuessr for treeless volcanic landscapes, moss, lava fields, and dramatic empty roads."
-  },
-  {
-    mode: ["mixed","lookalikes"],
-    category: "Australia vs South Africa",
-    q: "Both countries drive on the left and can be dry. Which clue pushes you toward South Africa?",
-    a: ["Eucalyptus trees", "Yellow outer shoulder road line", "Red dirt", "English signs"],
-    correct: 1,
-    why: "Yellow outer shoulder lines are a classic South Africa/Botswana-region clue. Eucalyptus/red dirt can also appear in Australia."
-  },
-  {
-    mode: ["mixed","lookalikes"],
-    category: "Brazil vs Portugal",
-    q: "You see Portuguese words, tropical vegetation, red dirt, and concrete utility poles. Best guess?",
-    a: ["Portugal", "Brazil", "Spain", "France"],
-    correct: 1,
-    why: "Portuguese plus tropical/red-dirt environment usually means Brazil, while Portugal looks more European/Mediterranean."
-  },
-  {
-    mode: ["mixed","scripts"],
-    category: "Language",
-    q: "Which word is a strong Indonesia clue?",
-    a: ["Jl.", "Katu", "Calle", "Rue"],
-    correct: 0,
-    why: "“Jl.” is short for Jalan, meaning street/road in Indonesian. You may also see Kabupaten or Kecamatan."
-  },
-  {
-    mode: ["mixed","scripts"],
-    category: "Language",
-    q: "Which pair correctly separates Spanish and Portuguese?",
-    a: ["Spanish uses Rua; Portuguese uses Calle", "Portuguese often has ção, nh, lh; Spanish has ñ and calle", "They are impossible to tell apart", "Spanish uses Hangul"],
-    correct: 1,
-    why: "Portuguese often has ção, nh, lh, Rua, Avenida. Spanish often has ñ, calle, carretera, ciudad."
-  },
-  {
-    mode: ["mixed","roads","speed"],
-    category: "Driving Side",
-    q: "Which set is mostly left-driving countries?",
-    a: ["USA, Canada, Mexico", "France, Germany, Spain", "Japan, Thailand, Australia, South Africa", "Brazil, Chile, Argentina"],
-    correct: 2,
-    why: "Japan, Thailand, Australia, and South Africa are all important left-driving countries in GeoGuessr."
-  },
-  {
-    mode: ["mixed","lookalikes"],
-    category: "Canada vs USA",
-    q: "What is one of the fastest clues for Canada over the USA?",
-    a: ["Metric speed signs and bilingual French/English areas", "Yellow centre lines", "Wooden houses", "Flat roads"],
-    correct: 0,
-    why: "Canada uses km/h, and Quebec/New Brunswick often show French or bilingual signs. Yellow centre lines appear in both Canada and the USA."
-  },
-  {
-    mode: ["mixed","vegetation"],
-    category: "Chile",
-    q: "Which country is especially recognizable by a north-to-south climate pattern: desert north, Mediterranean centre, green south?",
-    a: ["Chile", "Thailand", "Denmark", "Poland"],
-    correct: 0,
-    why: "Chile is long and thin, so its landscape changes dramatically from Atacama desert to vineyards to rainy southern forests."
-  },
-  {
-    mode: ["mixed","scripts"],
-    category: "Script",
-    q: "Greek alphabet on road signs almost always means:",
-    a: ["Turkey", "Greece", "Romania", "Serbia"],
-    correct: 1,
-    why: "Greek script is one of the easiest script clues. It strongly points to Greece."
-  },
-  {
-    mode: ["mixed","scripts"],
-    category: "Script",
-    q: "Hebrew letters on signs strongly point to:",
-    a: ["Jordan", "Israel", "Tunisia", "Qatar"],
-    correct: 1,
-    why: "Hebrew is the major instant clue for Israel. Israel may also have Arabic and English on signs."
-  },
-  {
-    mode: ["mixed","roads"],
-    category: "License Plates",
-    q: "A blue strip on the left side of a long license plate usually suggests:",
-    a: ["European Union style plates", "Only Canada", "Only Japan", "Only Brazil"],
-    correct: 0,
-    why: "The blue EU strip is common across many European countries. It narrows you to Europe but does not identify the exact country by itself."
-  },
-  {
-    mode: ["mixed","roads"],
-    category: "License Plates",
-    q: "Yellow plates are especially useful for which country pair/group?",
-    a: ["Netherlands/Colombia/Israel/UK rear plates", "Japan only", "Australia only", "Russia only"],
-    correct: 0,
-    why: "Yellow plates can point toward the Netherlands, Colombia, Israel, Luxembourg, or UK rear plates depending on context."
-  },
-  {
-    mode: ["mixed","scripts"],
-    category: "Nordic Language",
-    q: "You see words with lots of double vowels and ä/ö, like 'järvi' or 'katu'. Which country is likely?",
-    a: ["Finland", "Norway", "Denmark", "Spain"],
-    correct: 0,
-    why: "Finnish has a distinctive look with double vowels and words like katu, tie, and järvi."
-  },
-  {
-    mode: ["mixed","lookalikes"],
-    category: "Thailand vs Cambodia vs Laos",
-    q: "You see Southeast Asian script and left-side driving. Which is most likely?",
-    a: ["Thailand", "Cambodia", "Laos", "Vietnam"],
-    correct: 0,
-    why: "Thailand drives on the left. Cambodia and Laos drive on the right. Script then helps confirm Thai vs Khmer/Lao."
-  },
-  {
-    mode: ["mixed","lookalikes"],
-    category: "Peru vs Bolivia vs Chile",
-    q: "High, dry Andes with poorer rural roads often makes you think:",
-    a: ["Bolivia or Peru", "Denmark", "Singapore", "Netherlands"],
-    correct: 0,
-    why: "Peru and Bolivia often show dry high-altitude Andean landscapes. Chile is also Andean but often has cleaner roads and a strong north/south climate pattern."
-  },
-  {
-    mode: ["mixed","vegetation"],
-    category: "Vegetation",
-    q: "Eucalyptus trees, red soil, big open roads, and left-side driving point strongly to:",
-    a: ["Australia", "France", "South Korea", "Romania"],
-    correct: 0,
-    why: "Eucalyptus and red dirt are classic Australia clues, especially when combined with left-side driving."
-  },
-  {
-    mode: ["mixed","lookalikes"],
-    category: "New Zealand vs UK/Ireland",
-    q: "Which clue pushes you toward New Zealand over Ireland/UK?",
-    a: ["Bigger dramatic mountains, ferny vegetation, wider rural roads", "Right-side driving", "Arabic signs", "Yellow plates only"],
-    correct: 0,
-    why: "New Zealand often has dramatic mountains, green hills, sheep, and wider rural roads than UK/Ireland."
-  },
-  {
-    mode: ["mixed","roads"],
-    category: "Road Signs",
-    q: "A road sign says 'TOPE'. What does that usually suggest?",
-    a: ["Mexico or Latin America speed bump clue", "Japan highway", "Finland lake road", "Iceland volcano"],
-    correct: 0,
-    why: "TOPE means speed bump and is especially common/useful in Mexico, though it can appear elsewhere in Latin America."
-  },
-  {
-    mode: ["mixed","scripts"],
-    category: "Turkish",
-    q: "Which letters are strong Turkish clues?",
-    a: ["ş, ğ, ı, ç", "ł, ż, ś", "æ, ø, å", "の, し, ん"],
-    correct: 0,
-    why: "Turkish uses distinctive letters like ş, ğ, ı, and ç. Words like Mahallesi, Caddesi, and Sokak are also useful."
-  },
-  {
-    mode: ["mixed","vegetation"],
-    category: "Mediterranean",
-    q: "Dry hills, olive trees, cypress, terracotta roofs, and stone villages could be:",
-    a: ["Spain, Italy, Greece, Turkey, Croatia", "Only Canada", "Only Singapore", "Only Iceland"],
-    correct: 0,
-    why: "Mediterranean landscapes are common across southern Europe and Turkey, so use language/signs to narrow further."
-  },
-  {
-    mode: ["mixed","roads"],
-    category: "Meta",
-    q: "What is the best way to use Google car/meta clues?",
-    a: ["As confirmation, not the only reason", "Ignore all normal geography", "Only memorize car roofs", "Always guess Ghana"],
-    correct: 0,
-    why: "Meta clues can change with updates. They are helpful, but normal geography, roads, signs, and language are more reliable."
-  },
-  {
-    mode: ["mixed","lookalikes"],
-    category: "Scandinavia",
-    q: "Very flat farmland, Scandinavian-looking signs, and no mountains most likely points to:",
-    a: ["Denmark", "Norway", "Switzerland", "Chile"],
-    correct: 0,
-    why: "Denmark is very flat. Norway is mountainous/fjordy, Sweden and Finland are more forest/lake heavy."
-  },
-  {
-    mode: ["mixed","lookalikes"],
-    category: "Scandinavia",
-    q: "Dramatic fjords, mountains, tunnels, and high-quality roads point strongly to:",
-    a: ["Norway", "Latvia", "Netherlands", "Bangladesh"],
-    correct: 0,
-    why: "Norway is the classic GeoGuessr country for fjords, steep mountains, tunnels, and scenic roads."
-  },
-  {
-    mode: ["mixed","scripts"],
-    category: "Polish vs Czech/Slovak",
-    q: "Letters like ł, ż, ś, ć, and ń point most strongly to:",
-    a: ["Poland", "Czechia", "Turkey", "Norway"],
-    correct: 0,
-    why: "Those accented letters are classic Polish clues. Czech/Slovak more often show č, š, ž and other marks."
-  },
-  {
-    mode: ["mixed","roads"],
-    category: "Coverage",
-    q: "Why are China mainland, Iran, North Korea, and Afghanistan usually not good first guesses in standard GeoGuessr rounds?",
-    a: ["They have limited/no normal official Street View-style road coverage", "They all drive on the left", "They all use EU plates", "They are always in every map"],
-    correct: 0,
-    why: "Many major countries have little or no normal Google Street View road coverage, so they are usually absent or limited in standard maps."
-  },
-  {
-    mode: ["mixed","vegetation"],
-    category: "Africa",
-    q: "Very flat, dry, sandy roads, sparse traffic, and left-side driving often suggests:",
-    a: ["Botswana", "Japan", "Ireland", "Taiwan"],
-    correct: 0,
-    why: "Botswana often feels flat, dry, sandy, sparse, and open, with left-side driving."
-  },
-  {
-    mode: ["mixed","scripts"],
-    category: "Arabic",
-    q: "Arabic plus French, dry Mediterranean/North African scenery, and white buildings can point toward:",
-    a: ["Tunisia", "South Korea", "Finland", "Brazil"],
-    correct: 0,
-    why: "Tunisia often has Arabic and French, dry Mediterranean/North African landscapes, and white buildings."
-  },
-  {
-    mode: ["mixed","vegetation"],
-    category: "Boreal",
-    q: "Flat pine/birch forests and many lakes could be:",
-    a: ["Finland/Sweden/Baltics/Russia/Canada", "Only Qatar", "Only Peru", "Only Singapore"],
-    correct: 0,
-    why: "Boreal forest clues are broad. Use language, road signs, road lines, and plates to separate them."
-  }
-];
-
-let current = [];
-let index = 0;
-let score = 0;
-let streak = 0;
-let misses = [];
-let currentMode = "mixed";
-let answered = false;
-let timer = null;
-let timeLeft = 10;
-
-function $(id) { return document.getElementById(id); }
-
-function shuffle(arr) {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
+const bank = [{"level": "easy", "mode": ["mixed", "signs"], "cat": "Specific Signs", "q": "You see a circular sign with a red border and blue inside, sometimes with a red slash or X. What should you think first?", "a": ["No parking/no stopping style sign; not country-specific", "Instantly guess Japan", "Instantly guess Brazil", "It means the road is private"], "c": 0, "why": "This red/blue circular sign is common in many European-style road systems. Use it as a broad clue, then check language, plates, bollards, and road signs."}, {"level": "easy", "mode": ["mixed", "signs", "language"], "cat": "Stop Signs", "q": "A stop sign says DUR. Which country is this a strong clue for?", "a": ["Turkey", "Finland", "Mexico", "Japan"], "c": 0, "why": "DUR means stop in Turkish. Combine it with Turkish letters like ş, ğ, ı, and ç."}, {"level": "easy", "mode": ["mixed", "signs"], "cat": "Road Signs", "q": "A road sign says TOPE. What does this usually suggest?", "a": ["Mexico or Latin America speed bump clue", "Norway tunnel warning", "Japan train crossing", "Finland lake road"], "c": 0, "why": "TOPE means speed bump and is especially useful in Mexico, though it can appear elsewhere in Latin America."}, {"level": "easy", "mode": ["mixed", "language"], "cat": "Script", "q": "You see Hangul, like 한글. Which country is most likely?", "a": ["South Korea", "Japan", "Thailand", "Greece"], "c": 0, "why": "Hangul is the Korean writing system. This is one of the strongest script clues in GeoGuessr."}, {"level": "easy", "mode": ["mixed", "language"], "cat": "Script", "q": "You see Japanese kana like の, し, ん mixed with kanji. Which country is most likely?", "a": ["Japan", "China", "Taiwan", "South Korea"], "c": 0, "why": "Japanese often mixes kanji with hiragana/katakana. Chinese usually uses characters without kana."}, {"level": "easy", "mode": ["mixed", "language"], "cat": "Script", "q": "Greek alphabet on signs most strongly points to:", "a": ["Greece", "Turkey", "Romania", "Portugal"], "c": 0, "why": "Greek script is a very high-confidence Greece clue."}, {"level": "easy", "mode": ["mixed", "language"], "cat": "Script", "q": "Hebrew letters on road signs most strongly point to:", "a": ["Israel", "Jordan", "Tunisia", "Qatar"], "c": 0, "why": "Hebrew is the major instant clue for Israel, often with Arabic and English also visible."}, {"level": "easy", "mode": ["mixed", "roads"], "cat": "Road Lines", "q": "Left-side driving plus a yellow outer shoulder line strongly points to:", "a": ["South Africa region", "Finland", "Portugal", "South Korea"], "c": 0, "why": "Yellow outer shoulder lines plus left-side driving are a classic clue for South Africa and nearby countries like Botswana, Lesotho, and Eswatini."}, {"level": "easy", "mode": ["mixed", "roads"], "cat": "Driving Side", "q": "Which group is mostly left-driving countries?", "a": ["Japan, Thailand, Australia, South Africa", "USA, Canada, Mexico, Brazil", "France, Germany, Spain, Italy", "Chile, Peru, Bolivia, Argentina"], "c": 0, "why": "Japan, Thailand, Australia, and South Africa all drive on the left."}, {"level": "easy", "mode": ["mixed", "plates"], "cat": "License Plates", "q": "A long license plate with a blue strip on the left usually suggests:", "a": ["Europe/EU-style plate", "Only Canada", "Only Japan", "Only Brazil"], "c": 0, "why": "A blue strip on a long plate is a common European/EU-style clue, but it does not identify the exact country alone."}, {"level": "easy", "mode": ["mixed", "plates"], "cat": "License Plates", "q": "Yellow rear plate plus left-side driving should make you think of:", "a": ["UK likely", "Brazil likely", "Russia likely", "Cambodia likely"], "c": 0, "why": "The UK uses yellow rear plates and drives on the left. Always confirm with signs and road style."}, {"level": "easy", "mode": ["mixed", "landscape"], "cat": "Landscape", "q": "Treeless volcanic land, black lava rock, moss, and sparse roads point most strongly to:", "a": ["Iceland or Faroe Islands", "Brazil", "Bangladesh", "Hungary"], "c": 0, "why": "Treeless volcanic terrain is one of the strongest Iceland/Faroe-style landscape clues."}, {"level": "easy", "mode": ["mixed", "landscape"], "cat": "Landscape", "q": "Eucalyptus trees, red soil, open roads, and left-side driving point strongly to:", "a": ["Australia", "France", "South Korea", "Romania"], "c": 0, "why": "Eucalyptus plus red dirt and left driving is a strong Australia clue."}, {"level": "easy", "mode": ["mixed", "lookalikes"], "cat": "Lookalikes", "q": "Australia and South Africa can both look dry and drive on the left. Which clue pushes you toward South Africa?", "a": ["Yellow outer shoulder line", "Japanese kana", "EU blue plates", "Snow poles"], "c": 0, "why": "The yellow outer shoulder line is a classic South Africa-region clue."}, {"level": "easy", "mode": ["mixed", "language", "lookalikes"], "cat": "Brazil vs Portugal", "q": "Portuguese words plus tropical vegetation and red dirt usually means:", "a": ["Brazil", "Portugal", "Spain", "France"], "c": 0, "why": "Portuguese plus tropical/red-dirt scenery is much more likely Brazil than Portugal."}, {"level": "easy", "mode": ["mixed", "language"], "cat": "Indonesia", "q": "Which abbreviation is a strong Indonesia/Malaysia clue, often Indonesia?", "a": ["Jl.", "Katu", "Calle", "Rue"], "c": 0, "why": "Jl. is short for Jalan, meaning road/street. Kabupaten and Kecamatan are even stronger Indonesia clues."}, {"level": "easy", "mode": ["mixed", "language"], "cat": "Finland", "q": "Words like katu, tie, and järvi point strongly to:", "a": ["Finland", "Norway", "Denmark", "Spain"], "c": 0, "why": "Finnish often has words like katu, tie, järvi, lots of double vowels, and ä/ö."}, {"level": "easy", "mode": ["mixed", "landscape"], "cat": "Chile", "q": "Which country has a famous north-to-south pattern: desert north, Mediterranean centre, green south?", "a": ["Chile", "Thailand", "Denmark", "Poland"], "c": 0, "why": "Chile’s long shape creates huge climate changes from the Atacama desert to rainy southern forests."}, {"level": "easy", "mode": ["mixed", "lookalikes"], "cat": "SE Asia", "q": "Thai script plus left-side driving points strongly to:", "a": ["Thailand", "Cambodia", "Laos", "Vietnam"], "c": 0, "why": "Thailand drives left. Cambodia and Laos drive right, so driving side is a great separator."}, {"level": "easy", "mode": ["mixed", "coverage"], "cat": "Coverage", "q": "Which country is usually a risky guess in normal official-road GeoGuessr because broad Street View road coverage is limited/absent?", "a": ["North Korea", "France", "Australia", "Japan"], "c": 0, "why": "North Korea does not have normal broad official road coverage like France, Australia, or Japan."}, {"level": "medium", "mode": ["mixed", "signs"], "cat": "Specific Signs", "q": "You see a red-border/blue-centre circular no-stopping style sign, EU-looking plates, and Cyrillic nearby. What is the best reasoning?", "a": ["Europe/Eastern Europe or Balkans possible; use the Cyrillic and other clues", "It must be Japan", "It must be Canada", "It must be Brazil"], "c": 0, "why": "The red/blue sign is not a country lock. Cyrillic plus EU-style context points you toward Eastern Europe/Balkans/nearby regions."}, {"level": "medium", "mode": ["mixed", "signs"], "cat": "Specific Signs", "q": "A sign says ALTO at an intersection. What is a reasonable first region?", "a": ["Mexico / parts of Latin America", "Finland", "Japan", "Greece"], "c": 0, "why": "ALTO is common on stop signs in Mexico and some Latin American contexts. Do not use it alone; check language, road quality, and plates."}, {"level": "medium", "mode": ["mixed", "signs"], "cat": "Specific Signs", "q": "A sign says PARE and the area is tropical with Portuguese-looking words. Best guess?", "a": ["Brazil", "Portugal", "Greece", "South Korea"], "c": 0, "why": "PARE can appear in Brazil, and Portuguese plus tropical/red dirt strongly supports Brazil over Portugal."}, {"level": "medium", "mode": ["mixed", "roads"], "cat": "Road Lines", "q": "Yellow centre lines alone should NOT automatically make you guess USA/Canada because they can also appear in:", "a": ["Norway, Israel, South Africa region, parts of Japan/Korea", "Only Antarctica", "Only France", "Only Thailand"], "c": 0, "why": "Yellow centre lines are common in the Americas but not exclusive. Always stack clues."}, {"level": "medium", "mode": ["mixed", "plates"], "cat": "Plates", "q": "Yellow plates on both front and rear could point to which set of possibilities?", "a": ["Netherlands, Luxembourg, Colombia, Israel", "Japan, Korea, Taiwan only", "Finland, Sweden, Norway only", "Chile, Peru, Bolivia only"], "c": 0, "why": "Yellow plates can occur in multiple places, so combine plate colour with road side, language, and environment."}, {"level": "medium", "mode": ["mixed", "plates"], "cat": "Plates", "q": "Red text on a white European-style plate is a useful clue for:", "a": ["Belgium possible", "Iceland guaranteed", "Brazil guaranteed", "Thailand guaranteed"], "c": 0, "why": "Belgian plates often have red text. It is a useful clue but should still be confirmed with surroundings."}, {"level": "medium", "mode": ["mixed", "language"], "cat": "Language", "q": "Which pair is the best Spanish vs Portuguese separator?", "a": ["Calle/Carretera/ñ vs Rua/Estrada/ção/nh/lh", "Hangul vs kana", "Greek vs Hebrew", "DUR vs Katu"], "c": 0, "why": "Spanish often has calle, carretera, ñ. Portuguese often has rua, estrada, ção, nh, lh."}, {"level": "medium", "mode": ["mixed", "language"], "cat": "Indonesia", "q": "Which words are especially strong for Indonesia rather than just generic Malay/Indonesian?", "a": ["Kabupaten and Kecamatan", "Katu and järvi", "Calle and carretera", "Mahallesi and Sokak"], "c": 0, "why": "Kabupaten and Kecamatan are Indonesian administrative terms and are strong Indonesia clues."}, {"level": "medium", "mode": ["mixed", "language"], "cat": "Turkey", "q": "You see words like Mahallesi, Caddesi, and Sokak. Which country should you think of?", "a": ["Turkey", "Finland", "Brazil", "Ireland"], "c": 0, "why": "These are Turkish road/address words. Combine with Turkish letters ş, ğ, ı, ç."}, {"level": "medium", "mode": ["mixed", "lookalikes"], "cat": "Japan/Korea/Taiwan", "q": "Chinese characters, many scooters, tropical urban density, and right-side driving point most strongly to:", "a": ["Taiwan", "Japan", "South Korea", "Thailand"], "c": 0, "why": "Taiwan uses Chinese characters, drives right, and often has many scooters. Japan drives left and uses kana mixed with kanji."}, {"level": "medium", "mode": ["mixed", "lookalikes"], "cat": "Thailand/Cambodia/Laos", "q": "Right-side driving plus Khmer script and red dirt points to:", "a": ["Cambodia", "Thailand", "Japan", "Malaysia"], "c": 0, "why": "Cambodia drives right and uses Khmer script. Thailand drives left."}, {"level": "medium", "mode": ["mixed", "lookalikes"], "cat": "Canada vs USA", "q": "Northern forests, yellow centre lines, English signs, wide roads. What clue best separates Canada from northern USA?", "a": ["km/h speed signs, bilingual signs, or provincial shields", "The presence of trees", "The sky colour", "A paved road"], "c": 0, "why": "Canada/USA can look almost identical. Metric signs, French/bilingual signs, and provincial route markers are stronger separators."}, {"level": "medium", "mode": ["mixed", "lookalikes"], "cat": "New Zealand vs UK/Ireland", "q": "Which clue pushes you toward New Zealand instead of UK/Ireland?", "a": ["Bigger dramatic mountains, ferny vegetation, wider rural roads", "Right-side driving", "Arabic signs", "Yellow plates only"], "c": 0, "why": "New Zealand often has more dramatic landscapes, fern-like vegetation, and wider rural roads than UK/Ireland."}, {"level": "medium", "mode": ["mixed", "lookalikes"], "cat": "Peru/Bolivia/Chile", "q": "High, dry, rugged Andes with poorer rural roads often suggests:", "a": ["Peru or Bolivia", "Denmark", "Singapore", "Netherlands"], "c": 0, "why": "Dry, high-altitude Andean terrain often suggests Peru/Bolivia. Chile can also be Andean, but often has stronger road quality/climate-zone clues."}, {"level": "medium", "mode": ["mixed", "landscape"], "cat": "Africa", "q": "Very flat, dry, sandy roads, sparse traffic, and left-side driving often suggests:", "a": ["Botswana", "Japan", "Ireland", "Taiwan"], "c": 0, "why": "Botswana often feels flat, dry, sandy, sparse, and open, with left-side driving."}, {"level": "medium", "mode": ["mixed", "landscape"], "cat": "Nordics", "q": "Dramatic fjords, mountains, tunnels, and high-quality roads point strongly to:", "a": ["Norway", "Latvia", "Netherlands", "Bangladesh"], "c": 0, "why": "Norway is famous in GeoGuessr for fjords, steep mountains, tunnels, and scenic high-quality roads."}, {"level": "medium", "mode": ["mixed", "poles"], "cat": "Utility Poles", "q": "Dense overhead wires, narrow clean roads, left-side driving, and road mirrors are a strong combo for:", "a": ["Japan", "Brazil", "Portugal", "Kenya"], "c": 0, "why": "Japan commonly has dense utility wires, road mirrors, clean narrow roads, and left-side driving."}, {"level": "medium", "mode": ["mixed", "poles"], "cat": "Street Items", "q": "Snow poles lining roads can appear in several places. Which group is reasonable?", "a": ["Japan, Nordics, Canada, Alps", "Only Brazil", "Only Singapore", "Only Ghana"], "c": 0, "why": "Snow poles are not country-exclusive. They point toward snowy regions like Japan, Scandinavia/Finland, Canada, or Alpine areas."}, {"level": "hard", "mode": ["mixed", "signs"], "cat": "Hard Signs", "q": "A red/blue no-stopping sign appears with Italian-looking roads and long EU-style plates. What is the most careful conclusion?", "a": ["Italy/San Marino possible, but confirm with language/plates/architecture", "It is definitely Ukraine", "It is definitely Brazil", "It is definitely Japan"], "c": 0, "why": "The red/blue sign is not exclusive. Italian-style roads and EU plates make Italy/San Marino possible, but you need confirmation."}, {"level": "hard", "mode": ["mixed", "signs"], "cat": "Hard Signs", "q": "Yellow directional signs with black text, Balkan-looking roads, and possible Cyrillic/Latin mix should keep which region in mind?", "a": ["Serbia/Balkans", "New Zealand", "Iceland", "Canada Prairies"], "c": 0, "why": "Yellow directional signs with black text are a useful Balkan/Serbia-region clue when combined with script and road feel."}, {"level": "hard", "mode": ["mixed", "roads"], "cat": "Hard Roads", "q": "Left-side driving, dry land, English signs, but no clear yellow outer shoulder. What should you check before locking South Africa?", "a": ["Eucalyptus/red dirt and Australian-style signs", "Whether the sun exists", "Only the plate blur", "Nothing; always South Africa"], "c": 0, "why": "Without the yellow outer shoulder line, Australia is a serious lookalike. Check vegetation, signs, road width, and road furniture."}, {"level": "hard", "mode": ["mixed", "roads"], "cat": "Hard Roads", "q": "Clean mountain roads, tunnels, yellow centre lines, and Nordic-looking scenery. Best first country?", "a": ["Norway", "Mexico", "South Africa", "Cambodia"], "c": 0, "why": "Norway can have yellow centre lines, but the fjords/mountains/tunnels are the key supporting clues."}, {"level": "hard", "mode": ["mixed", "plates"], "cat": "Hard Plates", "q": "A yellow plate clue is visible, but the country has right-side driving, Spanish signs, and tropical/Andean scenery. Which yellow-plate country becomes plausible?", "a": ["Colombia", "UK", "Netherlands", "Luxembourg"], "c": 0, "why": "Colombia uses yellow plates and drives right. Spanish and tropical/Andean scenery help separate it from European yellow-plate countries."}, {"level": "hard", "mode": ["mixed", "plates"], "cat": "Hard Plates", "q": "A yellow rear plate with a white front plate and left-side driving most strongly suggests:", "a": ["UK", "Netherlands", "Colombia", "Israel"], "c": 0, "why": "The UK commonly has white front plates and yellow rear plates, combined with left-side driving."}, {"level": "hard", "mode": ["mixed", "language"], "cat": "Hard Language", "q": "Cyrillic appears, but the road/architecture feels Balkan rather than vast/post-Soviet. Which set should stay in mind?", "a": ["Serbia, Bulgaria, North Macedonia, Montenegro", "Japan, Korea, Taiwan", "Brazil, Portugal, Spain", "Australia, New Zealand, Ireland"], "c": 0, "why": "Cyrillic is not only Russia/Ukraine. Balkan countries may use Cyrillic too, so regional feel matters."}, {"level": "hard", "mode": ["mixed", "language"], "cat": "Hard Language", "q": "Letters č, š, ž appear, but you also see ř. Which country becomes especially likely?", "a": ["Czechia", "Poland", "Turkey", "Finland"], "c": 0, "why": "The letter ř is especially associated with Czech. Polish has ł/ż/ś/ć/ń."}, {"level": "hard", "mode": ["mixed", "language"], "cat": "Hard Language", "q": "You see ł, ż, ś, ć, and ń. Which country is most likely?", "a": ["Poland", "Czechia", "Slovakia", "Turkey"], "c": 0, "why": "Those letters are classic Polish clues."}, {"level": "hard", "mode": ["mixed", "lookalikes"], "cat": "Hard Lookalike", "q": "Portuguese language, EU plates, tiled/stone European streets, and Mediterranean/Atlantic feel. Best guess?", "a": ["Portugal", "Brazil", "Angola", "Mexico"], "c": 0, "why": "Portuguese plus EU plates and European architecture points to Portugal, not Brazil."}, {"level": "hard", "mode": ["mixed", "lookalikes"], "cat": "Hard Lookalike", "q": "Green mountainous Andes, tropical feel, and Spanish signs. Which pair rises compared with dry Peru/Bolivia?", "a": ["Colombia/Ecuador", "Iceland/Faroe", "Finland/Sweden", "Tunisia/Jordan"], "c": 0, "why": "Colombia and Ecuador are often greener and more tropical than the dry high Andes of Peru/Bolivia."}, {"level": "hard", "mode": ["mixed", "lookalikes"], "cat": "Hard Lookalike", "q": "Arabic and French appear together with dry Mediterranean/North African scenery. Best country to consider?", "a": ["Tunisia", "South Korea", "Finland", "Brazil"], "c": 0, "why": "Tunisia often has Arabic/French bilingual context and dry Mediterranean/North African landscapes."}, {"level": "hard", "mode": ["mixed", "lookalikes"], "cat": "Hard Lookalike", "q": "Arabic/English, extremely modern desert highways, and skyscraper-style urbanism. Best shortlist?", "a": ["UAE/Qatar", "Jordan/Tunisia", "Peru/Bolivia", "Denmark/Finland"], "c": 0, "why": "UAE and Qatar often have very modern desert road systems with Arabic/English signage."}, {"level": "hard", "mode": ["mixed", "poles"], "cat": "Hard Poles", "q": "Concrete poles with many wires in tropical surroundings could be Brazil, Thailand, Indonesia, or Taiwan. What should you use to split them?", "a": ["Driving side, script/language, road signs, and scooters/road style", "Only pole material", "Only sky colour", "Only road width"], "c": 0, "why": "Concrete poles are broad. Combine them with language/script and driving side."}, {"level": "hard", "mode": ["mixed", "poles"], "cat": "Hard Poles", "q": "Wooden circular poles, forest roads, lakes, and northern feel could be several countries. Which extra clue would make Finland more likely?", "a": ["Words like katu, tie, järvi and lots of double vowels", "Spanish word Calle", "Yellow rear plates", "Thai script"], "c": 0, "why": "Flat forests/lakes are broad. Finnish language is the stronger separator."}, {"level": "hard", "mode": ["mixed", "bollards", "roads"], "cat": "Hard Bollards", "q": "Simple roadside posts in dry empty left-driving land could be Australia, South Africa, or Botswana. Which clue strongly pushes South Africa-region?", "a": ["Yellow outer shoulder line", "Japanese kana", "Greek alphabet", "EU blue strip"], "c": 0, "why": "Road furniture alone can be broad. Yellow outer shoulder line is the key South Africa-region clue."}, {"level": "hard", "mode": ["mixed", "landscape"], "cat": "Hard Landscape", "q": "Mediterranean scrub, olive trees, dry hills, and terracotta/stone villages. Which answer is the best shortlist?", "a": ["Spain, Italy, Greece, Turkey, Portugal, Croatia, southern France", "Canada, Finland, Iceland only", "Japan, Korea, Taiwan only", "Botswana, Ghana, Kenya only"], "c": 0, "why": "Mediterranean landscapes repeat across many countries. You need language, signs, road shields, and plates to finish."}, {"level": "hard", "mode": ["mixed", "coverage"], "cat": "Hard Coverage", "q": "Which guess is usually risky in standard official-road rounds because normal broad coverage is limited or absent?", "a": ["Iran", "Japan", "France", "Australia"], "c": 0, "why": "Iran generally lacks broad normal official Google Street View road coverage, unlike Japan, France, and Australia."}, {"level": "hard", "mode": ["mixed", "meta"], "cat": "Hard Meta", "q": "You recognize a possible Google car clue, but signs, road lines, and language point somewhere else. What is the best habit?", "a": ["Use car/meta as confirmation only", "Always trust the car over all signs", "Ignore language", "Guess the same country every time"], "c": 0, "why": "Car/meta clues can change with coverage updates. Normal geography and signage should usually carry more weight."}, {"level": "master", "mode": ["mixed", "master", "signs"], "cat": "Master Signs", "q": "A red-border/blue-centre no-stopping sign appears on an urban European road. Why is it dangerous as a single clue?", "a": ["It is a road-rule sign used across many countries; it mostly confirms a European-style road system", "It only exists in Lithuania", "It only exists in Japan", "It proves the country drives left"], "c": 0, "why": "Top players avoid single-clue locks. This sign is widespread, so it should trigger a search for language, bollards, plate style, road numbering, and architecture."}, {"level": "master", "mode": ["mixed", "master", "roads"], "cat": "Master Roads", "q": "A yellow centre line appears on a mountain road with fjords/tunnels and Nordic signs. Why is Norway better than the Americas?", "a": ["Landscape and infrastructure override the broad yellow-line clue", "Yellow lines only exist in Norway", "The Americas never have mountains", "Nordic signs mean Brazil"], "c": 0, "why": "Yellow centre lines are broad. Fjords, tunnels, Nordic language/signage, and road quality make Norway the smarter stacked answer."}, {"level": "master", "mode": ["mixed", "master", "roads"], "cat": "Master Roads", "q": "Left-driving, dry roads, sparse settlements, and simple bollards. No yellow outer shoulder line. Which uncertainty should remain?", "a": ["Australia vs Botswana/South Africa is still open until vegetation, road markings, signs, and fences are checked", "It must be Japan", "It must be Portugal", "It must be Iceland"], "c": 0, "why": "Without the yellow shoulder, dry left-driving countries can be tricky. Eucalyptus/red dirt can push Australia; yellow shoulder/security walls can push South Africa; extreme flat dryness can push Botswana."}, {"level": "master", "mode": ["mixed", "master", "plates"], "cat": "Master Plates", "q": "You see yellow plates. Which answer shows the best expert habit?", "a": ["Use plate colour to shortlist, then split Netherlands/Luxembourg/Colombia/Israel/UK rear by driving side, language, and environment", "Yellow plates always mean Netherlands", "Yellow plates always mean UK", "Ignore all yellow plates"], "c": 0, "why": "Yellow plates are strong but not exclusive. Experts combine plate position, driving side, language, and landscape."}, {"level": "master", "mode": ["mixed", "master", "language"], "cat": "Master Language", "q": "A sign has č, š, ž but no Polish ł/ś/ć. The landscape is Central European and hilly. What is the best shortlist?", "a": ["Czechia/Slovakia/Slovenia/Croatia-type region, then use road signs and place names", "Poland only", "Japan or Korea", "Brazil or Portugal"], "c": 0, "why": "Háček letters occur across several Slavic languages. Polish has different distinctive letters; Czech/Slovak/Slovenian/Croatian need further separation."}, {"level": "master", "mode": ["mixed", "master", "lookalikes"], "cat": "Master Lookalike", "q": "Portugal vs Brazil: Portuguese language is visible but there are EU plates, stone/tile architecture, and narrow European streets. What is the best answer?", "a": ["Portugal; the non-language clues override the Brazil possibility", "Brazil because Portuguese always means Brazil", "Spain because it is Europe", "Mexico because it is Latin"], "c": 0, "why": "Portuguese is shared. EU plates and European architecture strongly indicate Portugal."}, {"level": "master", "mode": ["mixed", "master", "lookalikes"], "cat": "Master Lookalike", "q": "Ecuador vs Colombia vs Peru/Bolivia: you see lush green Andes, Spanish, and tropical mountain vegetation. Which comparison is best?", "a": ["Ecuador/Colombia rise; Peru/Bolivia are often drier/high-altitude in many rounds", "Always Bolivia", "Always Chile", "Always Uruguay"], "c": 0, "why": "Green Andes and tropical mountain vegetation often push Ecuador/Colombia over the drier Peru/Bolivia look."}, {"level": "master", "mode": ["mixed", "master", "lookalikes"], "cat": "Master Lookalike", "q": "UAE/Qatar vs Jordan: Arabic/English signs appear, but the roads are extremely modern, wide, and urban-desert. Best shortlist?", "a": ["UAE/Qatar before Jordan", "Jordan only", "Tunisia only", "Israel only"], "c": 0, "why": "Jordan can be dry/desert with Arabic/English, but UAE/Qatar are more likely to have ultra-modern desert highways and hyper-developed urbanism."}, {"level": "master", "mode": ["mixed", "master", "poles"], "cat": "Master Poles", "q": "Poles with holes are visible. Why is this not enough to lock a country?", "a": ["Hole-pattern concrete poles appear in multiple countries; use language, road side, signs, and landscape", "They only appear in Thailand", "They only appear in Hungary", "They only appear in Brazil"], "c": 0, "why": "Pole clues are useful, but many pole designs repeat. Experts treat them as narrowing clues, not final answers."}, {"level": "master", "mode": ["mixed", "master", "poles"], "cat": "Master Poles", "q": "Dense overhead wiring, convex mirrors, rice fields, clean narrow roads, and left-side driving together are strongest for:", "a": ["Japan", "South Korea", "Taiwan", "Malaysia"], "c": 0, "why": "Each clue alone can be broad, but together they make a strong Japan stack."}, {"level": "master", "mode": ["mixed", "master", "bollards"], "cat": "Master Bollards", "q": "Bollards and roadside posts feel European, but there is no readable language. What should an expert do next?", "a": ["Use bollards with road numbers, plate style, sign backs, terrain, and architecture to build a shortlist", "Guess France every time", "Ignore all roadside posts", "Guess the flattest country"], "c": 0, "why": "European bollards can be powerful but often require supporting clues. Expert play is about stacking infrastructure clues."}, {"level": "master", "mode": ["mixed", "master", "landscape"], "cat": "Master Landscape", "q": "You see vineyards and Mediterranean scrub. Which answer shows the best top-tier reasoning?", "a": ["Keep Spain/Italy/France/Portugal/Greece/Turkey/Chile/South Africa/Australia in mind, then split with plates, road signs, and architecture", "Immediately guess Italy", "Immediately guess Chile", "Immediately guess Australia"], "c": 0, "why": "Vineyards and Mediterranean vegetation exist on multiple continents. They are a biome clue, not a country lock."}, {"level": "master", "mode": ["mixed", "master", "landscape"], "cat": "Master Landscape", "q": "Red dirt appears with tropical vegetation. Why is that clue not enough?", "a": ["Red dirt appears in Brazil, Ghana, Uganda, Kenya, SE Asia, Australia, and Latin America", "It only appears in Brazil", "It only appears in Australia", "It means the camera is broken"], "c": 0, "why": "Red dirt is useful but extremely broad. Combine it with language, road side, signs, and vehicle/plate clues."}, {"level": "master", "mode": ["mixed", "master", "coverage"], "cat": "Master Coverage", "q": "A location looks like mainland China, but you are in a normal official-road competitive-style round. What should you remember?", "a": ["Mainland China has limited normal Google Street View road coverage; consider Taiwan, Hong Kong, Macau, or nearby lookalikes", "Always guess Beijing", "Always guess North Korea", "Ignore all Chinese characters"], "c": 0, "why": "Official road coverage limitations matter. Chinese characters in normal rounds more often mean Taiwan, Hong Kong, Macau, or other contexts than broad mainland China."}, {"level": "master", "mode": ["mixed", "master", "meta"], "cat": "Master Meta", "q": "Best master-level rule for meta clues?", "a": ["Meta confirms a hypothesis; it should not replace language, signs, roads, and landscape", "Meta is always more important than signs", "Never learn road signs", "Only guess from car colour"], "c": 0, "why": "Top players know meta, but the strongest play is clue stacking."}, {"level": "master", "mode": ["mixed", "master", "lookalikes"], "cat": "Master Lookalike", "q": "South Africa vs Botswana vs Lesotho vs Eswatini: which answer is the best terrain-based first split?", "a": ["Botswana is often flatter/drier/sparser; Lesotho more mountainous/highland; Eswatini greener/hillier; South Africa more diverse", "They all look exactly the same", "Botswana is always mountainous", "Lesotho is always coastal"], "c": 0, "why": "Southern Africa requires region splitting: flat dry Botswana, mountainous Lesotho, greener hilly Eswatini, diverse South Africa."}];
+let current=[],index=0,score=0,streak=0,misses=[],currentMode="mixed",difficulty="easy",answered=false,timer=null,timeLeft=0;
+const settings={easy:{label:"Easy",count:12,choices:3,points:100,seconds:12},medium:{label:"Medium",count:15,choices:4,points:130,seconds:10},hard:{label:"Hard",count:18,choices:4,points:160,seconds:8},master:{label:"Master",count:20,choices:4,points:200,seconds:6}};
+function $(id){return document.getElementById(id)}
+function shuffle(arr){const a=[...arr];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function showScreen(id){document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));$(id).classList.add("active")}
+function setDifficulty(level){difficulty=level;$("difficultyLabel").textContent=settings[level].label;["easy","medium","hard","master"].forEach(x=>$(x+"Btn").classList.toggle("active",x===level))}
+function levelsForDifficulty(diff){if(diff==="easy")return["easy"];if(diff==="medium")return["easy","medium"];if(diff==="hard")return["medium","hard"];return["hard","master"]}
+function adjustChoices(item){const max=settings[difficulty].choices;if(item.a.length<=max)return{...item};const keep=new Set([item.c]);while(keep.size<max)keep.add(Math.floor(Math.random()*item.a.length));const chosen=[...keep].map(i=>({text:item.a[i],old:i}));const sh=shuffle(chosen);return{...item,a:sh.map(x=>x.text),c:sh.findIndex(x=>x.old===item.c)}}
+function getCheckedModes(){
+  return [...document.querySelectorAll(".modeBox:checked")].map(x=>x.value);
 }
-
-function showScreen(id) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  $(id).classList.add('active');
+function updateSelectedSummary(){
+  const modes=getCheckedModes();
+  const text=modes.length?("Selected: "+modes.map(labelForMode).join(", ")):"No modes selected yet.";
+  const el=$("selectedSummary");
+  if(el)el.textContent=text;
 }
-
-function startGame(mode) {
-  currentMode = mode;
-  index = 0;
-  score = 0;
-  streak = 0;
-  misses = [];
-  answered = false;
-  let pool = bank.filter(x => x.mode.includes(mode));
-  if (mode === "mixed") pool = bank;
-  current = shuffle(pool).slice(0, Math.min(15, pool.length));
-  $("total").textContent = current.length;
+function labelForMode(mode){
+  const labels={mixed:"Mixed",signs:"Specific Signs",roads:"Roads & Lines",plates:"License Plates",language:"Scripts & Language",poles:"Poles & Street Items",bollards:"Bollards",landscape:"Vegetation & Landscape",lookalikes:"Lookalikes",master:"Master Drill"};
+  return labels[mode]||mode;
+}
+function handleModeChange(box){
+  if(box.value==="mixed"&&box.checked){
+    document.querySelectorAll(".modeBox").forEach(b=>{if(b.value!=="mixed")b.checked=false;});
+  }else if(box.checked){
+    const mixed=document.querySelector('.modeBox[value="mixed"]');
+    if(mixed)mixed.checked=false;
+  }
+  updateSelectedSummary();
+}
+function selectAllModes(){
+  document.querySelectorAll(".modeBox").forEach(b=>{b.checked=b.value!=="mixed";});
+  updateSelectedSummary();
+}
+function clearModes(){
+  document.querySelectorAll(".modeBox").forEach(b=>b.checked=false);
+  updateSelectedSummary();
+}
+function startSelectedGame(){
+  let modes=getCheckedModes();
+  if(modes.length===0)modes=["mixed"];
+  startGame(modes);
+}
+function startGame(modeOrModes){
+  const modes=Array.isArray(modeOrModes)?modeOrModes:[modeOrModes];
+  selectedModes=modes;
+  currentMode=modes.includes("mixed")?"mixed":modes.join("+");
+  index=0;score=0;streak=0;misses=[];answered=false;
+  let allowed=levelsForDifficulty(difficulty);
+  let pool;
+  if(modes.includes("mixed")){
+    pool=bank.filter(q=>allowed.includes(q.level));
+  }else if(modes.includes("master")){
+    const nonMasterModes=modes.filter(m=>m!=="master");
+    if(nonMasterModes.length===0){
+      pool=bank.filter(q=>q.level==="master");
+    }else{
+      pool=bank.filter(q=>(allowed.includes(q.level)||q.level==="master") && (q.level==="master" || nonMasterModes.some(m=>q.mode.includes(m))));
+    }
+  }else{
+    pool=bank.filter(q=>allowed.includes(q.level) && modes.some(m=>q.mode.includes(m)));
+  }
+  if(pool.length===0)pool=bank.filter(q=>allowed.includes(q.level));
+  current=shuffle(pool).slice(0,Math.min(settings[difficulty].count,pool.length)).map(adjustChoices);
+  $("total").textContent=current.length;
   updateStats();
   showScreen("game");
   loadQuestion();
 }
+function updateStats(){$("score").textContent=score;$("streak").textContent=streak;$("round").textContent=current.length?Math.min(index+1,current.length):0}
 
-function updateStats() {
-  $("score").textContent = score;
-  $("streak").textContent = streak;
-  $("round").textContent = Math.min(index + 1, current.length);
+function esc(s){return String(s).replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[ch]))}
+function sceneData(item){
+ const text=(item.q+" "+item.cat+" "+item.why).toLowerCase();
+ if(text.includes("red-border")||text.includes("red/blue")||text.includes("red border")||text.includes("blue inside")||text.includes("no-stopping")||text.includes("no stopping")||text.includes("no parking"))return{type:"urban",sign:"noStop",label:"red/blue no-stopping sign",caption:"Broad European-style clue: red border + blue centre means no parking/no stopping. Do not country-lock from this alone."};
+ if(text.includes("dur"))return{type:"town",sign:"dur",label:"DUR stop sign",caption:"Turkish stop clue: DUR, especially with Turkish letters like ş, ğ, ı, ç."};
+ if(text.includes("alto"))return{type:"latin",sign:"alto",label:"ALTO stop sign",caption:"ALTO is useful for Mexico / parts of Latin America. Confirm with Spanish, roads, and environment."};
+ if(text.includes("pare"))return{type:"tropical",sign:"pare",label:"PARE stop sign",caption:"PARE plus Portuguese/tropical/red dirt pushes toward Brazil."};
+ if(text.includes("tope"))return{type:"latin",sign:"tope",label:"TOPE speed bump",caption:"TOPE is a Mexico / Latin America speed-bump clue."};
+ if(text.includes("yellow outer shoulder")||text.includes("yellow shoulder"))return{type:"savanna",road:"yellowShoulder",label:"yellow outer shoulder line",caption:"Left-driving + yellow outer shoulder is a strong South Africa-region clue."};
+ if(text.includes("yellow centre")||text.includes("yellow center"))return{type:"mountain",road:"yellowCenter",label:"yellow centre line",caption:"Yellow centre lines are useful but broad: Americas, Norway, Israel, South Africa region, and others."};
+ if(text.includes("yellow rear plate")||text.includes("white front plate"))return{type:"uk",plate:"ukRear",label:"yellow rear plate",caption:"White front + yellow rear + left driving makes the UK likely."};
+ if(text.includes("yellow plates")||text.includes("yellow plate"))return{type:"street",plate:"yellowBoth",label:"yellow plates",caption:"Yellow plates shortlist several places. Split using driving side, language, and landscape."};
+ if(text.includes("blue strip")||text.includes("eu-style")||text.includes("eu plates"))return{type:"europe",plate:"eu",label:"blue EU-style strip",caption:"Long plate + blue strip means Europe/EU-style. Use language and signs to finish."};
+ if(text.includes("red text")&&text.includes("plate"))return{type:"europe",plate:"belgium",label:"red text plate",caption:"Red text on a white European-style plate can suggest Belgium."};
+ if(text.includes("hangul")||text.includes("korean"))return{type:"korea",script:"한글",label:"Hangul",caption:"Hangul script is a high-confidence South Korea clue."};
+ if(text.includes("kana")||text.includes("の")||text.includes("japanese"))return{type:"japan",script:"の し ん",label:"Japanese kana",caption:"Kana mixed with kanji plus left-driving and dense wires points to Japan."};
+ if(text.includes("greek alphabet"))return{type:"med",script:"Αθήνα",label:"Greek alphabet",caption:"Greek script is a high-confidence Greece clue."};
+ if(text.includes("hebrew"))return{type:"desert",script:"עברית",label:"Hebrew",caption:"Hebrew on signs strongly points to Israel."};
+ if(text.includes("thai"))return{type:"tropical",script:"ไทย",label:"Thai script",caption:"Thai script plus left-driving is a strong Thailand clue."};
+ if(text.includes("khmer")||text.includes("cambodia"))return{type:"redDirt",script:"ខ្មែរ",label:"Khmer script",caption:"Khmer script plus right-driving/red dirt points to Cambodia."};
+ if(text.includes("lao")||text.includes("laos"))return{type:"ruralMount",script:"ລາວ",label:"Lao script",caption:"Lao script plus right-driving and rural/mountain feel points to Laos."};
+ if(text.includes("chinese characters")||text.includes("scooters")||text.includes("taiwan"))return{type:"taiwan",script:"中文",label:"Chinese + scooters",caption:"Chinese characters, scooters, tropical density, and right-driving suggest Taiwan."};
+ if(text.includes("kabupaten")||text.includes("kecamatan")||text.includes("jl.")||text.includes("jalan")||text.includes("indonesia"))return{type:"indo",script:"Jl. Merdeka",label:"Jl. / Kabupaten",caption:"Jl. means Jalan. Kabupaten/Kecamatan are stronger Indonesia clues."};
+ if(text.includes("katu")||text.includes("järvi")||text.includes("tie")||text.includes("finland")||text.includes("finnish"))return{type:"boreal",script:"Katu / Järvi",label:"Finnish words",caption:"Katu, tie, järvi, many double vowels, and ä/ö point toward Finland."};
+ if(text.includes("ł")||text.includes("polish")||text.includes("poland"))return{type:"europeTown",script:"Łódź / ż ś ć",label:"Polish letters",caption:"ł, ż, ś, ć, ń are classic Polish clues."};
+ if(text.includes("č")||text.includes("ř")||text.includes("czech"))return{type:"europeTown",script:"Praha / ř č š",label:"Czech/Slavic letters",caption:"ř strongly suggests Czech; č/š/ž appear across several Slavic languages."};
+ if(text.includes("mahallesi")||text.includes("caddesi")||text.includes("sokak")||text.includes("turkish"))return{type:"turkey",script:"Caddesi / Sokak",label:"Turkish street words",caption:"Mahallesi, Caddesi, Sokak and letters ş/ğ/ı/ç point to Turkey."};
+ if(text.includes("portuguese")||text.includes("rua")||text.includes("estrada")){if(text.includes("eu plates")||text.includes("european")||text.includes("portugal"))return{type:"portugal",script:"Rua / ção",label:"Portuguese in Europe",caption:"Portuguese + EU plates + European streets points to Portugal."};return{type:"brazil",script:"Rua / ção",label:"Portuguese + tropical",caption:"Portuguese plus tropical vegetation/red dirt usually points to Brazil."};}
+ if(text.includes("spanish")||text.includes("calle")||text.includes("carretera"))return{type:"latin",script:"Calle / ñ",label:"Spanish clues",caption:"Calle, carretera, and ñ point to Spanish-speaking countries."};
+ if(text.includes("iceland")||text.includes("faroe")||text.includes("volcanic")||text.includes("lava")||text.includes("moss"))return{type:"volcanic",label:"treeless volcanic terrain",caption:"Black lava, moss, and treeless roads suggest Iceland/Faroe-style landscapes."};
+ if(text.includes("fjords")||text.includes("tunnels")||text.includes("norway"))return{type:"fjord",label:"fjords and tunnels",caption:"Fjords, steep mountains, tunnels, and high-quality roads point strongly to Norway."};
+ if(text.includes("eucalyptus")||text.includes("australia"))return{type:"australia",label:"eucalyptus + red dirt",caption:"Eucalyptus, red dirt, open roads, and left-driving are strong Australia clues."};
+ if(text.includes("new zealand")||text.includes("ferny")||text.includes("sheep"))return{type:"nz",label:"green mountains + sheep",caption:"Green dramatic mountains, sheep, and ferny vegetation suggest New Zealand."};
+ if(text.includes("botswana"))return{type:"botswana",label:"flat dry sparse roads",caption:"Very flat, dry, sandy, sparse roads with left-driving can suggest Botswana."};
+ if(text.includes("south africa"))return{type:"savanna",road:"yellowShoulder",label:"South Africa-region road",caption:"Dry grassland, security walls, and yellow outer shoulder lines support South Africa region."};
+ if(text.includes("andes")||text.includes("peru")||text.includes("bolivia")||text.includes("ecuador")||text.includes("colombia")){if(text.includes("green")||text.includes("tropical"))return{type:"greenAndes",label:"green tropical Andes",caption:"Green/tropical Andes often raise Colombia/Ecuador compared with dry Peru/Bolivia."};return{type:"dryAndes",label:"dry high Andes",caption:"Dry high-altitude Andes often suggests Peru/Bolivia or northern Chile."};}
+ if(text.includes("chile")||text.includes("atacama"))return{type:"chile",label:"Chile climate zones",caption:"Chile can be desert north, Mediterranean centre, and green south."};
+ if(text.includes("mediterranean")||text.includes("vineyards")||text.includes("olive"))return{type:"med",label:"Mediterranean biome",caption:"Olives, vineyards, dry hills, and terracotta are a broad Mediterranean-style clue, not a country lock."};
+ if(text.includes("red dirt"))return{type:"redDirt",label:"red dirt trap",caption:"Red dirt appears in Brazil, Africa, SE Asia, Australia, and Latin America. Stack clues."};
+ if(text.includes("dense overhead wiring")||text.includes("convex mirrors"))return{type:"japan",label:"dense wires + mirrors",caption:"Dense overhead wires, convex mirrors, rice fields, and left-driving form a Japan clue stack."};
+ if(text.includes("concrete poles")||text.includes("poles with holes")||text.includes("utility poles"))return{type:"poles",label:"utility pole clue",caption:"Pole clues narrow the region, but need language, driving side, signs, and landscape to confirm."};
+ if(text.includes("snow poles"))return{type:"snow",label:"snow poles",caption:"Snow poles can appear in Japan, Nordics, Canada, and Alpine regions."};
+ if(text.includes("bollard")||text.includes("roadside posts"))return{type:"bollards",label:"bollards/roadside posts",caption:"Bollards are powerful, but many designs repeat. Combine with plates, signs, and landscape."};
+ if(text.includes("china")||text.includes("mainland")||text.includes("coverage")||text.includes("north korea")||text.includes("iran"))return{type:"coverage",label:"coverage trap",caption:"Some countries have limited normal official road coverage, so avoid risky guesses in standard rounds."};
+ if(text.includes("meta")||text.includes("google car")||text.includes("blurry"))return{type:"meta",label:"meta caution",caption:"Meta can help, but it changes. Use it as confirmation, not your only clue."};
+ return{type:"generic",label:"clue stack",caption:"Stack clues: road side + language + signs + plates + landscape."};
 }
 
-function loadQuestion() {
-  clearInterval(timer);
-  answered = false;
-  const item = current[index];
-  $("category").textContent = item.category;
-  $("question").textContent = item.q;
-  $("feedback").className = "feedback";
-  $("feedback").textContent = "";
-  $("nextBtn").disabled = true;
-  const answers = $("answers");
-  answers.innerHTML = "";
-
-  item.a.forEach((text, i) => {
-    const btn = document.createElement("button");
-    btn.className = "answer";
-    btn.textContent = `${i + 1}. ${text}`;
-    btn.onclick = () => choose(i);
-    answers.appendChild(btn);
-  });
-
-  if (currentMode === "speed") {
-    $("timerWrap").style.display = "block";
-    timeLeft = 10;
-    $("timerBar").style.width = "100%";
-    timer = setInterval(() => {
-      timeLeft--;
-      $("timerBar").style.width = (timeLeft * 10) + "%";
-      if (timeLeft <= 0) {
-        clearInterval(timer);
-        if (!answered) choose(-1);
-      }
-    }, 1000);
-  } else {
-    $("timerWrap").style.display = "none";
+function realImageFor(d){
+  function wiki(file){
+    return "https://commons.wikimedia.org/wiki/Special:FilePath/" + encodeURIComponent(file).replace(/%20/g,"_");
   }
-  updateStats();
+  const data={
+    noStop:{url:wiki("Blue and red parking sign.svg"),credit:"Wikimedia Commons — Blue and red parking sign.svg"},
+    noStop2:{url:wiki("RU road sign 3.27.svg"),credit:"Wikimedia Commons — RU road sign 3.27.svg, no stopping sign"},
+    dur:{url:wiki("Turkey road sign TT-2.svg"),credit:"Wikimedia Commons — Turkey road sign TT-2.svg"},
+    durPhoto:{url:wiki("Stopsign Turkey.JPG"),credit:"Wikimedia Commons — Stopsign Turkey.JPG, CC BY-SA 3.0"},
+    ukRear:{url:wiki("Regular UK Rear Registration Plate.svg"),credit:"Wikimedia Commons — Regular UK Rear Registration Plate.svg"},
+    ukRearPng:{url:wiki("UK Rear Registration Plate.png"),credit:"Wikimedia Commons — UK Rear Registration Plate.png"},
+    volcanic:{url:wiki("Iceland volcanic landscape.jpg"),credit:"Wikimedia Commons — Iceland volcanic landscape.jpg, Delahanty"},
+    icelandRoad:{url:wiki("Road 417, Iceland 2019 17.jpg"),credit:"Wikimedia Commons — Road 417, Iceland 2019 17.jpg"},
+  };
+  if(d.sign==="noStop")return data.noStop;
+  if(d.sign==="dur")return data.dur;
+  if(d.plate==="ukRear")return data.ukRear;
+  if(d.type==="volcanic")return data.volcanic;
+  return null;
+}
+function renderScene(item){
+ const d=sceneData(item);
+ const sky=["desert","chile","dryAndes","botswana","savanna","turkey"].includes(d.type)?"#f6d49a":d.type==="snow"?"#c8e8ff":d.type==="volcanic"?"#9fb4c3":["fjord","nz","greenAndes"].includes(d.type)?"#b7ddf2":"#bde3ff";
+ const ground=["volcanic"].includes(d.type)?"#2b3035":["redDirt","australia","brazil","indo","tropical","latin"].includes(d.type)?"#b85d34":["desert","chile","dryAndes","botswana","savanna","turkey"].includes(d.type)?"#c9a166":["boreal","korea","japan","taiwan","nz","greenAndes"].includes(d.type)?"#4f8f55":"#5f8d5a";
+ const mountains=["fjord","nz","greenAndes","dryAndes","chile","ruralMount","volcanic","turkey"].includes(d.type);
+ const tropical=["tropical","brazil","indo","taiwan","latin","redDirt"].includes(d.type);
+ const boreal=["boreal","snow"].includes(d.type);
+ const urban=["urban","street","europe","europeTown","uk","korea","taiwan","portugal"].includes(d.type);
+ const shoulder=d.road==="yellowShoulder";
+ const roadLine=shoulder?`<line x1="260" y1="235" x2="125" y2="390" stroke="#ffd34e" stroke-width="8"/><line x1="500" y1="235" x2="675" y2="390" stroke="#ffd34e" stroke-width="8"/><line x1="380" y1="235" x2="380" y2="390" stroke="#f6f6f6" stroke-width="6" stroke-dasharray="28 20"/>`:`<line x1="380" y1="235" x2="380" y2="390" stroke="${d.road==="yellowCenter"?"#ffd34e":"#f6f6f6"}" stroke-width="6" stroke-dasharray="28 20"/>`;
+ const drive=(["japan","australia","nz","savanna","botswana","uk","tropical"].includes(d.type))?`<text x="24" y="56" class="scene-note">LEFT-DRIVE CLUE</text>`:"";
+ const script=d.script?`<rect x="480" y="78" width="190" height="54" rx="8" fill="#fff" stroke="#333"/><text x="575" y="112" text-anchor="middle" class="sign-text">${esc(d.script)}</text>`:"";
+ const svg=`<svg viewBox="0 0 760 430" role="img" aria-label="${esc(d.caption)}"><rect width="760" height="430" fill="${sky}"/>${mountains?mountainLayer(d.type):""}<rect x="0" y="235" width="760" height="195" fill="${ground}"/>${tropical?palmTrees():boreal?pineTrees():urban?cityBlocks():scrub()}<polygon points="295,235 465,235 700,430 60,430" fill="#4a4f55"/>${roadLine}<rect x="0" y="390" width="760" height="40" fill="rgba(0,0,0,.12)"/>${signElement(d)}${plateElement(d)}${script}${specialElement(d)}<text x="24" y="32" class="scene-note">${esc(d.label)}</text>${drive}</svg><div class="visual-caption">${esc(d.caption)}</div>`;
+ return `<div class="image-status">Searching Wikimedia Commons for a reusable real image for this clue. If none loads, the illustrated fallback stays visible.</div>` + svg;
 }
 
-function choose(choice) {
-  if (answered) return;
-  answered = true;
-  clearInterval(timer);
-  const item = current[index];
-  const buttons = [...document.querySelectorAll(".answer")];
+function commonsQueryFor(d,item){
+  const text=(item.q+" "+item.cat+" "+item.why).toLowerCase();
+  if(d.sign==="noStop")return "no stopping road sign";
+  if(d.sign==="dur")return "Turkey stop sign DUR road sign";
+  if(d.sign==="alto")return "ALTO stop sign Mexico road";
+  if(d.sign==="pare")return "PARE stop sign Brazil road";
+  if(d.sign==="tope")return "TOPE speed bump sign Mexico";
+  if(d.plate==="ukRear")return "United Kingdom rear yellow registration plate";
+  if(d.plate==="yellowBoth")return "yellow vehicle registration plate road";
+  if(d.plate==="eu")return "European vehicle registration plate blue strip";
+  if(d.plate==="belgium")return "Belgium vehicle registration plate red letters";
+  if(d.script==="한글")return "South Korea road sign Hangul street";
+  if(d.script==="の し ん")return "Japan road sign street view road";
+  if(d.script==="Αθήνα")return "Greece road sign Greek alphabet";
+  if(d.script==="עברית")return "Israel road sign Hebrew";
+  if(d.script==="ไทย")return "Thailand road sign Thai script";
+  if(d.script==="ខ្មែរ")return "Cambodia road sign Khmer";
+  if(d.script==="ລາວ")return "Laos road sign Lao script";
+  if(d.script==="中文")return "Taiwan street scooters Chinese signs";
+  if(d.script==="Jl. Merdeka")return "Indonesia Jalan road sign";
+  if(d.script==="Katu / Järvi")return "Finland road sign katu";
+  if(d.script==="Łódź / ż ś ć")return "Poland road sign";
+  if(d.script==="Praha / ř č š")return "Czech road sign Prague";
+  if(d.script==="Caddesi / Sokak")return "Turkey street sign Caddesi";
+  if(d.script==="Rua / ção"&&d.type==="portugal")return "Portugal Rua street sign road";
+  if(d.script==="Rua / ção")return "Brazil Rua road sign";
+  if(d.script==="Calle / ñ")return "Spanish Calle road sign";
+  if(d.type==="volcanic")return "Iceland volcanic road landscape";
+  if(d.type==="fjord")return "Norway fjord road tunnel";
+  if(d.type==="australia")return "Australia eucalyptus red dirt road";
+  if(d.type==="nz")return "New Zealand green mountain road sheep";
+  if(d.type==="botswana")return "Botswana dry road landscape";
+  if(d.type==="savanna")return "South Africa road yellow shoulder line";
+  if(d.type==="greenAndes")return "Ecuador Colombia green Andes road";
+  if(d.type==="dryAndes")return "Peru Bolivia dry Andes road";
+  if(d.type==="chile")return "Chile Atacama desert road";
+  if(d.type==="med")return "Mediterranean vineyard road olive trees";
+  if(d.type==="redDirt")return "red dirt tropical road";
+  if(d.type==="japan")return "Japan rural road utility poles mirror";
+  if(d.type==="poles")return "utility poles road";
+  if(d.type==="snow")return "snow poles road Japan Norway";
+  if(d.type==="bollards")return "roadside bollards road markers";
+  if(d.type==="coverage")return "China street sign road";
+  if(d.type==="meta")return "Google Street View car road";
+  if(d.type==="boreal")return "Finland forest road lake";
+  if(d.type==="urban")return "European urban road sign";
+  if(d.type==="korea")return "South Korea road Hangul";
+  if(d.type==="taiwan")return "Taiwan street scooters";
+  if(d.type==="indo")return "Indonesia village road";
+  if(d.type==="brazil")return "Brazil red dirt road";
+  if(d.type==="portugal")return "Portugal street road";
+  if(d.type==="turkey")return "Turkey dry hill road";
+  return "road sign country landscape";
+}
+function stripHtml(s){
+  const div=document.createElement("div");
+  div.innerHTML=s||"";
+  return div.textContent||div.innerText||"";
+}
+function chooseCommonsPage(pages){
+  const arr=Object.values(pages||{});
+  return arr.find(p=>p.imageinfo&&p.imageinfo[0]&&(p.imageinfo[0].thumburl||p.imageinfo[0].url));
+}
 
-  buttons.forEach((b, i) => {
-    b.disabled = true;
-    if (i === item.correct) b.classList.add("correct");
-    if (i === choice && i !== item.correct) b.classList.add("wrong");
-  });
+function requiredKeywordsFor(d,item){
+  const text=(item.q+" "+item.cat+" "+item.why).toLowerCase();
+  if(d.sign==="tope")return ["tope","speed bump","road sign","sign"];
+  if(d.sign==="alto")return ["alto","stop","road sign","sign","mexico"];
+  if(d.sign==="pare")return ["pare","stop","road sign","sign","brazil"];
+  if(d.sign==="dur")return ["dur","stop","turkey","road sign","sign"];
+  if(d.sign==="noStop")return ["no stopping","no parking","road sign","traffic sign","sign"];
+  if(d.plate==="ukRear")return ["registration plate","license plate","number plate","uk","united kingdom"];
+  if(d.plate==="yellowBoth")return ["registration plate","license plate","number plate","yellow plate"];
+  if(d.plate==="eu")return ["registration plate","license plate","number plate","europe"];
+  if(d.plate==="belgium")return ["belgium","registration plate","license plate","number plate"];
+  if(d.script==="한글")return ["korea","hangul","road sign","street sign"];
+  if(d.script==="の し ん")return ["japan","japanese","road sign","street"];
+  if(d.script==="Αθήνα")return ["greece","greek","road sign"];
+  if(d.script==="עברית")return ["israel","hebrew","road sign"];
+  if(d.script==="ไทย")return ["thailand","thai","road sign"];
+  if(d.script==="ខ្មែរ")return ["cambodia","khmer","road sign"];
+  if(d.script==="ລາວ")return ["laos","lao","road sign"];
+  if(d.script==="中文")return ["taiwan","chinese","scooter","street"];
+  if(d.script==="Jl. Merdeka")return ["indonesia","jalan","road sign","street"];
+  if(d.script==="Katu / Järvi")return ["finland","finnish","road sign","street"];
+  if(d.script==="Łódź / ż ś ć")return ["poland","polish","road sign"];
+  if(d.script==="Praha / ř č š")return ["czech","prague","road sign"];
+  if(d.script==="Caddesi / Sokak")return ["turkey","caddesi","sokak","street sign"];
+  if(d.script==="Rua / ção"&&d.type==="portugal")return ["portugal","rua","street","road"];
+  if(d.script==="Rua / ção")return ["brazil","rua","street","road"];
+  if(d.script==="Calle / ñ")return ["calle","spanish","road sign","street"];
+  if(d.type==="volcanic")return ["iceland","volcanic","lava","road","landscape"];
+  if(d.type==="fjord")return ["norway","fjord","tunnel","road"];
+  if(d.type==="australia")return ["australia","eucalyptus","red dirt","road"];
+  if(d.type==="nz")return ["new zealand","road","sheep","mountain"];
+  if(d.type==="botswana")return ["botswana","road","dry","landscape"];
+  if(d.type==="savanna")return ["south africa","road","yellow shoulder","road marking"];
+  if(d.type==="greenAndes")return ["andes","ecuador","colombia","road","mountain"];
+  if(d.type==="dryAndes")return ["andes","peru","bolivia","road","mountain"];
+  if(d.type==="chile")return ["chile","atacama","road","desert"];
+  if(d.type==="med")return ["mediterranean","vineyard","olive","road","landscape"];
+  if(d.type==="redDirt")return ["red dirt","road","tropical","landscape"];
+  if(d.type==="poles")return ["utility pole","road","electric pole"];
+  if(d.type==="snow")return ["snow pole","road","snow"];
+  if(d.type==="bollards")return ["bollard","road marker","roadside post"];
+  if(d.type==="coverage")return ["street","road","china","sign"];
+  if(d.type==="meta")return ["street view","google car","road"];
+  return ["road","sign","street","landscape"];
+}
+function textMatchesAny(haystack,needles){
+  const h=(haystack||"").toLowerCase();
+  return needles.some(k=>h.includes(k.toLowerCase()));
+}
 
-  const correct = choice === item.correct;
-  if (correct) {
-    score += currentMode === "speed" ? 150 + Math.max(0, timeLeft * 5) : 100;
-    streak++;
-    $("feedback").innerHTML = `<strong>Correct.</strong> ${item.why}`;
-  } else {
-    streak = 0;
-    misses.push({
-      q: item.q,
-      your: choice === -1 ? "Timed out" : item.a[choice],
-      correct: item.a[item.correct],
-      why: item.why
-    });
-    $("feedback").innerHTML = `<strong>Not quite.</strong> Correct answer: <strong>${item.a[item.correct]}</strong><br>${item.why}`;
+async function loadRealImage(item){
+  const box=$("visualScene");
+  if(!box)return;
+  const d=sceneData(item);
+  const query=commonsQueryFor(d,item);
+  const status=box.querySelector(".image-status");
+  if(status)status.textContent="Searching Wikimedia Commons for a relevant reusable real image: " + query;
+  const url="https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrnamespace=6&gsrlimit=8&gsrsearch="+encodeURIComponent(query)+"&prop=imageinfo&iiprop=url|extmetadata&iiurlwidth=1200&format=json&origin=*";
+  try{
+    const res=await fetch(url);
+    if(!res.ok)throw new Error("Commons request failed");
+    const data=await res.json();
+    const page=chooseCommonsPage(data.query&&data.query.pages);
+    if(!page)throw new Error("No image result");
+    const info=page.imageinfo[0];
+    const meta=info.extmetadata||{};
+    const imgUrl=info.thumburl||info.url;
+    const title=stripHtml((meta.ObjectName&&meta.ObjectName.value)||page.title||"Wikimedia Commons image");
+    const artist=stripHtml((meta.Artist&&meta.Artist.value)||"creator listed on Wikimedia Commons");
+    const license=stripHtml((meta.LicenseShortName&&meta.LicenseShortName.value)||"license listed on Wikimedia Commons");
+    const credit=`Wikimedia Commons — ${title} — ${artist} — ${license}`;
+    const description=stripHtml((meta.ImageDescription&&meta.ImageDescription.value)||"");
+    const categories=stripHtml((meta.Categories&&meta.Categories.value)||"");
+    const combinedMeta=[title,artist,license,description,categories,page.title,query].join(" ");
+    const required=requiredKeywordsFor(d,item);
+    if(!textMatchesAny(combinedMeta,required)){
+      if(status)status.textContent="Wikimedia returned an unrelated image, so the illustrated fallback is shown instead.";
+      return;
+    }
+    const img=document.createElement("img");
+    img.className="real-photo";
+    img.alt=d.caption;
+    img.loading="eager";
+    img.referrerPolicy="no-referrer";
+    img.src=imgUrl;
+    const creditDiv=document.createElement("div");
+    creditDiv.className="real-photo-credit";
+    creditDiv.textContent=credit;
+    img.onload=()=>box.classList.add("real-loaded");
+    img.onerror=()=>{ if(status)status.textContent="Real image did not load, so the illustrated fallback is shown."; };
+    box.insertBefore(creditDiv, box.firstChild);
+    box.insertBefore(img, creditDiv);
+  }catch(e){
+    if(status)status.textContent="No reusable real image loaded from Wikimedia Commons for this clue, so the illustrated fallback is shown.";
   }
-  $("feedback").classList.add("show");
-  $("nextBtn").disabled = false;
-  updateStats();
 }
 
-function nextQuestion() {
-  index++;
-  if (index >= current.length) {
-    endGame();
-  } else {
-    loadQuestion();
-  }
-}
+function signElement(d){if(!d.sign)return"";if(d.sign==="noStop")return`<line x1="120" y1="144" x2="120" y2="255" stroke="#333" stroke-width="8"/><circle cx="120" cy="115" r="42" fill="#1f60bb" stroke="#e32836" stroke-width="10"/><line x1="94" y1="89" x2="146" y2="141" stroke="#e32836" stroke-width="9"/>`;const word=d.sign==="dur"?"DUR":d.sign==="alto"?"ALTO":d.sign==="pare"?"PARE":"TOPE";if(d.sign==="tope")return`<line x1="122" y1="148" x2="122" y2="260" stroke="#333" stroke-width="8"/><rect x="73" y="89" width="98" height="52" rx="6" fill="#ffd34e" stroke="#222" stroke-width="4"/><text x="122" y="123" text-anchor="middle" class="sign-text">${word}</text>`;return`<line x1="122" y1="150" x2="122" y2="260" stroke="#333" stroke-width="8"/><polygon points="122,72 160,91 160,132 122,151 84,132 84,91" fill="#d82830" stroke="#fff" stroke-width="4"/><text x="122" y="119" text-anchor="middle" class="sign-text" fill="#fff">${word}</text>`}
+function plateElement(d){if(!d.plate)return"";if(d.plate==="eu")return`<rect x="560" y="182" width="128" height="34" rx="4" fill="#eee" stroke="#111" stroke-width="3"/><rect x="560" y="182" width="24" height="34" fill="#2450b8"/><circle cx="572" cy="199" r="6" fill="#ffd34e"/><text x="628" y="205" class="sign-text" font-size="14">EU 123</text>`;if(d.plate==="ukRear")return`<rect x="540" y="182" width="145" height="36" rx="4" fill="#ffd43b" stroke="#111" stroke-width="3"/><text x="612" y="206" text-anchor="middle" class="sign-text" font-size="14">AB12 CDE</text>`;if(d.plate==="yellowBoth")return`<rect x="540" y="182" width="145" height="36" rx="4" fill="#ffd43b" stroke="#111" stroke-width="3"/><text x="612" y="206" text-anchor="middle" class="sign-text" font-size="14">YELLOW</text>`;if(d.plate==="belgium")return`<rect x="540" y="182" width="145" height="36" rx="4" fill="#fff" stroke="#111" stroke-width="3"/><text x="612" y="206" text-anchor="middle" class="sign-text" font-size="14" fill="#b10f22">1-ABC-123</text>`;return""}
+function mountainLayer(type){const f1=type==="volcanic"?"#53616a":type==="dryAndes"||type==="chile"||type==="turkey"?"#a47b57":"#6b8aa0";const f2=type==="volcanic"?"#384047":type==="dryAndes"||type==="chile"||type==="turkey"?"#8d674b":"#54758c";return`<polygon points="0,235 130,90 270,235" fill="${f1}"/><polygon points="160,235 345,70 540,235" fill="${f2}"/><polygon points="405,235 600,95 760,235" fill="${f1}"/>`}
+function palmTrees(){return`<g transform="translate(620 190)"><rect x="-5" y="15" width="10" height="75" fill="#7a4c2a"/><path d="M0 15 C-45 0 -45 -20 -5 5 C-25 -35 5 -30 5 5 C30 -25 55 -10 5 15 C45 20 35 45 0 20" fill="#2f7d3d"/></g><g transform="translate(80 205) scale(.8)"><rect x="-5" y="15" width="10" height="75" fill="#7a4c2a"/><path d="M0 15 C-45 0 -45 -20 -5 5 C-25 -35 5 -30 5 5 C30 -25 55 -10 5 15 C45 20 35 45 0 20" fill="#2f7d3d"/></g>`}
+function pineTrees(){return`<g fill="#235b39"><polygon points="80,205 110,145 140,205"/><polygon points="100,220 132,150 164,220"/><polygon points="630,210 660,145 690,210"/><polygon points="590,215 620,155 650,215"/></g>`}
+function cityBlocks(){return`<rect x="35" y="150" width="70" height="85" fill="#6f7f8d"/><rect x="115" y="125" width="55" height="110" fill="#8796a4"/><rect x="595" y="135" width="65" height="100" fill="#7d8c9a"/><rect x="670" y="165" width="45" height="70" fill="#96a3ad"/><g fill="#f7f0b8"><rect x="50" y="165" width="10" height="10"/><rect x="75" y="165" width="10" height="10"/><rect x="130" y="145" width="10" height="10"/><rect x="615" y="155" width="10" height="10"/></g>`}
+function scrub(){return`<g fill="#617d3e"><ellipse cx="82" cy="230" rx="28" ry="12"/><ellipse cx="685" cy="230" rx="34" ry="14"/><ellipse cx="620" cy="255" rx="20" ry="10"/><ellipse cx="135" cy="260" rx="22" ry="11"/></g>`}
+function specialElement(d){if(d.type==="japan")return`<line x1="205" y1="80" x2="205" y2="242" stroke="#333" stroke-width="7"/><line x1="205" y1="96" x2="690" y2="58" stroke="#222" stroke-width="3"/><line x1="205" y1="116" x2="690" y2="82" stroke="#222" stroke-width="3"/><line x1="172" y1="142" x2="172" y2="235" stroke="#333" stroke-width="5"/><circle cx="172" cy="132" r="20" fill="#dce7ef" stroke="#e23b3b" stroke-width="5"/>`;if(d.type==="poles")return`<line x1="120" y1="95" x2="120" y2="260" stroke="#777" stroke-width="12"/><circle cx="120" cy="125" r="4" fill="#333"/><circle cx="120" cy="155" r="4" fill="#333"/><circle cx="120" cy="185" r="4" fill="#333"/><line x1="120" y1="115" x2="650" y2="85" stroke="#222" stroke-width="3"/><line x1="120" y1="145" x2="650" y2="120" stroke="#222" stroke-width="3"/>`;if(d.type==="bollards")return`<g><rect x="210" y="265" width="18" height="70" rx="6" fill="#f4f4f4" stroke="#111"/><rect x="210" y="275" width="18" height="18" fill="#111"/><rect x="530" y="265" width="18" height="70" rx="6" fill="#f4f4f4" stroke="#111"/><rect x="530" y="275" width="18" height="18" fill="#e24132"/></g>`;if(d.type==="snow")return`<g stroke="#e53535" stroke-width="5"><line x1="180" y1="230" x2="180" y2="342"/><line x1="235" y1="235" x2="235" y2="360"/><line x1="560" y1="230" x2="560" y2="342"/><line x1="620" y1="235" x2="620" y2="360"/></g><g fill="#fff" opacity=".85"><ellipse cx="100" cy="245" rx="90" ry="18"/><ellipse cx="650" cy="245" rx="110" ry="20"/></g>`;if(d.type==="coverage")return`<rect x="250" y="90" width="260" height="130" rx="16" fill="#fff" opacity=".9" stroke="#333" stroke-width="4"/><text x="380" y="145" text-anchor="middle" class="sign-text">LIMITED</text><text x="380" y="180" text-anchor="middle" class="sign-text">COVERAGE?</text><path d="M290 210 L470 100" stroke="#d82830" stroke-width="10"/>`;if(d.type==="meta")return`<rect x="300" y="250" width="160" height="70" rx="16" fill="#1b1b1b"/><rect x="325" y="225" width="110" height="50" rx="12" fill="#333"/><circle cx="335" cy="322" r="20" fill="#111"/><circle cx="430" cy="322" r="20" fill="#111"/><text x="380" y="210" text-anchor="middle" class="scene-note">car/meta clue?</text>`;return""}
 
-function endGame() {
-  clearInterval(timer);
-  showScreen("end");
-  $("finalScore").innerHTML = `Final score: <strong>${score}</strong> | Misses: <strong>${misses.length}</strong> out of <strong>${current.length}</strong>`;
-  const review = $("review");
-  review.innerHTML = "";
-  if (misses.length === 0) {
-    review.innerHTML = `<div class="review-item">Perfect round. Try Speed Mode next.</div>`;
-  } else {
-    misses.forEach(m => {
-      const div = document.createElement("div");
-      div.className = "review-item";
-      div.innerHTML = `<strong>Question:</strong> ${m.q}<br><strong>Your answer:</strong> ${m.your}<br><strong>Correct:</strong> ${m.correct}<br><strong>Remember:</strong> ${m.why}`;
-      review.appendChild(div);
-    });
-  }
-}
-
-function goMenu() {
-  clearInterval(timer);
-  showScreen("menu");
-  $("round").textContent = 0;
-  $("total").textContent = 0;
-}
-
-function showStudyCards() {
-  showScreen("study");
-}
-
-document.addEventListener("keydown", (e) => {
-  if (!document.getElementById("game").classList.contains("active")) return;
-  const n = parseInt(e.key, 10);
-  if (n >= 1 && n <= 4) choose(n - 1);
-});
+function loadQuestion(){clearInterval(timer);answered=false;const item=current[index];$("category").innerHTML=`${item.cat} <span class="badge">${item.level}</span>`;$("visualScene").classList.remove("real-loaded");$("visualScene").innerHTML=renderScene(item);loadRealImage(item);$("question").textContent=item.q;$("feedback").className="feedback";$("feedback").textContent="";$("nextBtn").disabled=true;const answers=$("answers");answers.innerHTML="";item.a.forEach((text,i)=>{const btn=document.createElement("button");btn.className="answer";btn.textContent=`${i+1}. ${text}`;btn.onclick=()=>choose(i);answers.appendChild(btn)});const timed=difficulty==="master"||currentMode==="master";if(timed){$("timerWrap").style.display="block";timeLeft=settings[difficulty].seconds;$("timerBar").style.width="100%";timer=setInterval(()=>{timeLeft--;$("timerBar").style.width=((timeLeft/settings[difficulty].seconds)*100)+"%";if(timeLeft<=0){clearInterval(timer);if(!answered)choose(-1)}},1000)}else $("timerWrap").style.display="none";updateStats()}
+function choose(choice){if(answered)return;answered=true;clearInterval(timer);const item=current[index];[...document.querySelectorAll(".answer")].forEach((b,i)=>{b.disabled=true;if(i===item.c)b.classList.add("correct");if(i===choice&&i!==item.c)b.classList.add("wrong")});if(choice===item.c){score+=settings[difficulty].points+Math.max(0,streak*10);if(difficulty==="master"||currentMode==="master")score+=Math.max(0,timeLeft*5);streak++;$("feedback").innerHTML=`<strong>Correct.</strong> ${item.why}`}else{streak=0;misses.push({q:item.q,your:choice===-1?"Timed out":item.a[choice],correct:item.a[item.c],why:item.why});$("feedback").innerHTML=`<strong>Not quite.</strong> Correct answer: <strong>${item.a[item.c]}</strong><br>${item.why}`}$("feedback").classList.add("show");$("nextBtn").disabled=false;updateStats()}
+function nextQuestion(){index++;if(index>=current.length)endGame();else loadQuestion()}
+function endGame(){clearInterval(timer);showScreen("end");const pct=current.length?Math.round(((current.length-misses.length)/current.length)*100):0;$("finalScore").innerHTML=`Final score: <strong>${score}</strong> | Accuracy: <strong>${pct}%</strong> | Difficulty: <strong>${settings[difficulty].label}</strong> | Misses: <strong>${misses.length}</strong>/${current.length}`;const review=$("review");review.innerHTML="";if(misses.length===0)review.innerHTML=`<div class="review-item">Perfect round. Move up a difficulty or try Master Drill.</div>`;else misses.forEach(m=>{const div=document.createElement("div");div.className="review-item";div.innerHTML=`<strong>Question:</strong> ${m.q}<br><strong>Your answer:</strong> ${m.your}<br><strong>Correct:</strong> ${m.correct}<br><strong>Remember:</strong> ${m.why}`;review.appendChild(div)})}
+function goMenu(){clearInterval(timer);showScreen("menu");$("round").textContent=0;$("total").textContent=0}
+function showStudy(){showScreen("study")}
+setDifficulty("easy");updateSelectedSummary();
+document.addEventListener("keydown",e=>{if(!$("game").classList.contains("active"))return;const n=parseInt(e.key,10);if(n>=1&&n<=4)choose(n-1)});
 </script>
-</body>
-</html>
+</body></html>
